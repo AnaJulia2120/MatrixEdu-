@@ -436,9 +436,9 @@
           </div>
           <label for="fCarrinho">Carrinho</label>
           <select id="fCarrinho" required>
-            <option value="lenovo">Carrinho Lenovo (27 notebooks)</option>
-            <option value="positivo">Carrinho Positivo (30 notebooks)</option>
-            <option value="tablets">Carrinho Tablets (29 tablets)</option>
+            <option value="1">Carrinho Lenovo (27 notebooks)</option>
+            <option value="2">Carrinho Positivo (30 notebooks)</option>
+            <option value="3">Carrinho Tablets (29 tablets)</option>
           </select>
 
           <label for="fSala">Sala solicitante</label>
@@ -725,39 +725,10 @@
   tabManha.addEventListener('click', function(){ selectShift('manha'); });
   tabTarde.addEventListener('click', function(){ selectShift('tarde'); });
 
-  /* ---------- Carrinhos ---------- */
-  var CART_KEY = 'matrixedu_carts_v1';
-  var LOG_KEY = 'matrixedu_log_v1';
-  var carts = null;
-  try{ carts = JSON.parse(localStorage.getItem(CART_KEY)); }catch(e){ carts = null; }
-  if(!carts){
-    carts = {
-      lenovo:   {nome:'Carrinho Lenovo',   total:27, fora:0},
-      positivo: {nome:'Carrinho Positivo', total:30, fora:0},
-      tablets:  {nome:'Carrinho Tablets',  total:29, fora:0}
-    };
-  }
+  /* ---------- Carrinhos / MySQL ---------- */
+  var carts = {};
   var log = [];
-  try{ log = JSON.parse(localStorage.getItem(LOG_KEY)) || []; }catch(e){ log = []; }
-
-  function saveCarts(){ localStorage.setItem(CART_KEY, JSON.stringify(carts)); }
-  function saveLog(){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
-
   var cartGrid = document.getElementById('cartGrid');
-  function renderCarts(){
-    var html = '';
-    Object.keys(carts).forEach(function(key){
-      var c = carts[key];
-      var disponiveis = c.total - c.fora;
-      var pct = Math.round((disponiveis / c.total) * 100);
-      html += '<div class="cart-card"><span class="tag">' + c.total + ' equipamentos</span><h3>' + c.nome + '</h3>' +
-        '<div class="gauge"><div class="gauge-fill" style="width:' + pct + '%"></div></div>' +
-        '<div class="cart-stats"><span><strong>' + disponiveis + '</strong> disponíveis</span><span><strong>' + c.fora + '</strong> em uso</span></div></div>';
-    });
-    cartGrid.innerHTML = html;
-  }
-  renderCarts();
-
   var fSala = document.getElementById('fSala');
   var ogManha = fSala.querySelector('optgroup[label="Manhã"]');
   var ogTarde = fSala.querySelector('optgroup[label="Tarde"]');
@@ -766,9 +737,9 @@
 
   var checkoutForm = document.getElementById('checkoutForm');
   var formMsg = document.getElementById('formMsg');
-
   var actionLabels = document.querySelectorAll('.action-toggle label');
   var fProf = document.getElementById('fProf');
+
   function updateProfRequirement(){
     var acao = document.querySelector('input[name="acao"]:checked').value;
     fProf.required = acao === 'retirada';
@@ -776,13 +747,37 @@
   }
   checkoutForm.querySelectorAll('input[name="acao"]').forEach(function(r){ r.addEventListener('change', updateProfRequirement); });
   updateProfRequirement();
-
   actionLabels.forEach(function(lbl){
-    lbl.addEventListener('click', function(){
-      actionLabels.forEach(function(l){ l.classList.remove('checked'); });
-      lbl.classList.add('checked');
-    });
+    lbl.addEventListener('click', function(){ actionLabels.forEach(function(l){ l.classList.remove('checked'); }); lbl.classList.add('checked'); });
   });
+
+  function loadData(){
+    fetch('buscar.php?action=dashboard', {credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(!data.ok) throw new Error(data.message || 'Erro ao carregar dados.');
+        carts = {}; data.carts.forEach(function(c){ carts[c.id] = c; });
+        log = data.log || [];
+        renderCarts(); renderLog();
+        if(data.user){ session = {user:data.user.email}; currentUser = data.user; }
+        else { session = null; currentUser = null; }
+        updateAuthUI();
+      })
+      .catch(function(err){ console.error(err); formMsg.textContent = 'Não foi possível carregar os dados do servidor.'; });
+  }
+
+  function renderCarts(){
+    var html = '';
+    Object.keys(carts).forEach(function(key){
+      var c = carts[key];
+      var disponiveis = Number(c.total) - Number(c.em_uso);
+      var pct = Math.round((disponiveis / Number(c.total)) * 100);
+      html += '<div class="cart-card"><span class="tag">' + c.total + ' equipamentos</span><h3>' + c.nome + '</h3>' +
+        '<div class="gauge"><div class="gauge-fill" style="width:' + pct + '%"></div></div>' +
+        '<div class="cart-stats"><span><strong>' + disponiveis + '</strong> disponíveis</span><span><strong>' + c.em_uso + '</strong> em uso</span></div></div>';
+    });
+    cartGrid.innerHTML = html;
+  }
 
   var logList = document.getElementById('logList');
   function renderLog(){
@@ -790,23 +785,18 @@
     var html = '';
     log.slice(0, 30).forEach(function(entry){
       var profTxt = entry.professor && entry.professor !== '—' ? entry.professor + ' · ' : '';
-      html += '<li><span><span class="who">' + entry.sala + '</span> · ' + profTxt + entry.carrinho + ' (' + entry.qtd + ') · ' + entry.hora + '</span>' +
+      html += '<li><span><span class="who">Sala ' + entry.sala + '</span> · ' + profTxt + entry.carrinho + ' (' + entry.qtd + ') · ' + entry.hora + '</span>' +
         '<span class="badge ' + (entry.acao === 'retirada' ? 'out' : 'in') + '">' + (entry.acao === 'retirada' ? 'Retirada' : 'Devolução') + '</span></li>';
     });
     logList.innerHTML = html;
   }
-  renderLog();
 
   var stampEl = document.getElementById('stampEl');
   function showStamp(text, isOut){
     stampEl.textContent = text;
-    stampEl.classList.remove('out-c','in-c','show');
-    void stampEl.offsetWidth;
-    stampEl.classList.add(isOut ? 'out-c' : 'in-c');
-    stampEl.classList.add('show');
-    document.body.classList.remove('flash-pulse');
-    void document.body.offsetWidth;
-    document.body.classList.add('flash-pulse');
+    stampEl.classList.remove('out-c','in-c','show'); void stampEl.offsetWidth;
+    stampEl.classList.add(isOut ? 'out-c' : 'in-c'); stampEl.classList.add('show');
+    document.body.classList.remove('flash-pulse'); void document.body.offsetWidth; document.body.classList.add('flash-pulse');
   }
 
   /* ---------- Status da aula, notificações e bloqueio no intervalo ---------- */
@@ -909,53 +899,39 @@
     e.preventDefault();
     formMsg.textContent = '';
     if(isLockedNow){ formMsg.textContent = 'As retiradas estão bloqueadas no momento.'; return; }
-    var cartKey = document.getElementById('fCarrinho').value;
+    var carrinhoId = parseInt(document.getElementById('fCarrinho').value, 10);
     var sala = document.getElementById('fSala').value;
     var qtd = parseInt(document.getElementById('fQtd').value, 10) || 0;
     var acao = document.querySelector('input[name="acao"]:checked').value;
-    var c = carts[cartKey];
-
     if(qtd < 1){ formMsg.textContent = 'Informe uma quantidade válida.'; return; }
     if(acao === 'retirada' && !fProf.value.trim()){ formMsg.textContent = 'Informe o nome do professor responsável pela retirada.'; return; }
-    if(acao === 'retirada'){
-      var disponiveis = c.total - c.fora;
-      if(qtd > disponiveis){ formMsg.textContent = 'Só há ' + disponiveis + ' equipamentos disponíveis nesse carrinho.'; return; }
-      c.fora += qtd;
-    } else {
-      if(qtd > c.fora){ formMsg.textContent = 'Esse carrinho tem apenas ' + c.fora + ' equipamentos em uso para devolver.'; return; }
-      c.fora -= qtd;
-    }
-    saveCarts();
-    renderCarts();
 
-    var agora = new Date();
-    var hora = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
-    log.unshift({carrinho: c.nome, sala: 'Sala ' + sala, professor: fProf.value.trim() || '—', qtd: qtd, acao: acao, hora: hora});
-    saveLog();
-    renderLog();
+    var fd = new FormData();
+    fd.append('acao', 'movimentacao');
+    fd.append('carrinho_id', carrinhoId);
+    fd.append('sala', sala);
+    fd.append('professor', fProf.value.trim());
+    fd.append('quantidade', qtd);
+    fd.append('tipo_movimentacao', acao);
 
-    showStamp(acao === 'retirada' ? 'Retirado ✓' : 'Devolvido ✓', acao === 'retirada');
-    checkoutForm.reset();
-    updateProfRequirement();
-    reapplyProfPrefill();
-    actionLabels.forEach(function(l){ l.classList.remove('checked'); });
-    actionLabels[0].classList.add('checked');
+    fetch('salvar.php', {method:'POST', body:fd, credentials:'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        if(!data.ok){ formMsg.textContent = data.message || 'Não foi possível salvar.'; return; }
+        carts = {}; data.carts.forEach(function(c){ carts[c.id] = c; });
+        log = data.log || [];
+        renderCarts(); renderLog();
+        showStamp(acao === 'retirada' ? 'Retirado ✓' : 'Devolvido ✓', acao === 'retirada');
+        checkoutForm.reset(); updateProfRequirement(); reapplyProfPrefill();
+        actionLabels.forEach(function(l){ l.classList.remove('checked'); }); actionLabels[0].classList.add('checked');
+      })
+      .catch(function(){ formMsg.textContent = 'Erro de conexão com o servidor.'; });
   });
 
-  /* ---------- Login e área de administração (licenças) ---------- */
-  var USERS_KEY = 'matrixedu_users_v1';
-  var SESSION_KEY = 'matrixedu_session_v1';
-  var users = null;
-  try{ users = JSON.parse(localStorage.getItem(USERS_KEY)); }catch(e){ users = null; }
-  if(!users){
-    users = { 'admin@matrixedu.com': {nome:'Administrador(a)', senha:'matrix2026', role:'admin', licenca:'liberada'} };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-  function saveUsers(){ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
 
+  /* ---------- Login e área de administração (MySQL) ---------- */
   var session = null;
-  try{ session = JSON.parse(localStorage.getItem(SESSION_KEY)); }catch(e){ session = null; }
-
+  var currentUser = null;
   var authBtn = document.getElementById('authBtn');
   var authOverlay = document.getElementById('authOverlay');
   var loginModal = document.getElementById('loginModal');
@@ -968,129 +944,82 @@
   var adminSection = document.getElementById('admin');
 
   function reapplyProfPrefill(){
-    if(!session) return;
-    var u = users[session.user];
-    if(u && u.role === 'professor' && u.licenca === 'liberada'){ fProf.value = u.nome; }
+    if(currentUser && currentUser.role === 'professor' && currentUser.licenca === 'liberada') fProf.value = currentUser.nome;
   }
-
-  function openLogin(){
-    loginModal.hidden = false;
-    authOverlay.classList.add('show');
-    document.getElementById('loginUser').focus();
-  }
-  function closeLoginModal(){
-    loginModal.hidden = true;
-    authOverlay.classList.remove('show');
-  }
-  authOverlay.addEventListener('click', closeLoginModal);
-  closeLogin.addEventListener('click', closeLoginModal);
-  document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape' && !loginModal.hidden) closeLoginModal();
-  });
+  function openLogin(){ loginModal.hidden = false; authOverlay.classList.add('show'); document.getElementById('loginUser').focus(); }
+  function closeLoginModal(){ loginModal.hidden = true; authOverlay.classList.remove('show'); }
+  authOverlay.addEventListener('click', closeLoginModal); closeLogin.addEventListener('click', closeLoginModal);
+  document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && !loginModal.hidden) closeLoginModal(); });
 
   authBtn.addEventListener('click', function(){
     if(session){
-      session = null;
-      localStorage.removeItem(SESSION_KEY);
-      updateAuthUI();
-    } else {
-      openLogin();
-    }
+      fetch('salvar.php', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'acao=logout', credentials:'same-origin'})
+        .then(function(){ session=null; currentUser=null; updateAuthUI(); });
+    } else openLogin();
   });
 
   function updateAuthUI(){
-    if(session && users[session.user]){
-      var u = users[session.user];
-      authBtn.textContent = 'Sair (' + u.nome.split(' ')[0] + ')';
-      var isAdmin = u.role === 'admin';
-      navAdminLink.hidden = !isAdmin;
-      adminSection.hidden = !isAdmin;
+    if(session && currentUser){
+      authBtn.textContent = 'Sair (' + currentUser.nome.split(' ')[0] + ')';
+      var isAdmin = currentUser.role === 'admin'; navAdminLink.hidden = !isAdmin; adminSection.hidden = !isAdmin;
       if(isAdmin) renderAdminTable();
       reapplyProfPrefill();
     } else {
-      authBtn.textContent = 'Entrar';
-      navAdminLink.hidden = true;
-      adminSection.hidden = true;
+      authBtn.textContent = 'Entrar'; navAdminLink.hidden = true; adminSection.hidden = true;
     }
   }
-  updateAuthUI();
-  if(!session){ openLogin(); }
 
   loginForm.addEventListener('submit', function(e){
-    e.preventDefault();
-    loginMsg.textContent = '';
-    var userKey = document.getElementById('loginUser').value.trim().toLowerCase();
-    var pass = document.getElementById('loginPass').value;
-    var u = users[userKey];
-    if(!u || u.senha !== pass){ loginMsg.textContent = 'E-mail ou senha incorretos.'; return; }
-    if(u.role === 'professor' && u.licenca !== 'liberada'){
-      loginMsg.textContent = u.licenca === 'pendente'
-        ? 'Sua licença ainda não foi liberada pelo administrador.'
-        : 'Sua licença foi bloqueada. Fale com o administrador.';
-      return;
-    }
-    session = {user: userKey};
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    loginForm.reset();
-    closeLoginModal();
-    updateAuthUI();
+    e.preventDefault(); loginMsg.textContent = '';
+    var fd = new URLSearchParams(); fd.append('acao','login'); fd.append('email',document.getElementById('loginUser').value.trim().toLowerCase()); fd.append('senha',document.getElementById('loginPass').value);
+    fetch('salvar.php', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:fd.toString(), credentials:'same-origin'})
+      .then(function(r){ return r.json(); }).then(function(data){
+        if(!data.ok){ loginMsg.textContent=data.message || 'E-mail ou senha incorretos.'; return; }
+        session={user:data.user.email}; currentUser=data.user; loginForm.reset(); closeLoginModal(); updateAuthUI(); loadData();
+      }).catch(function(){ loginMsg.textContent='Erro de conexão com o servidor.'; });
   });
 
   signupForm.addEventListener('submit', function(e){
-    e.preventDefault();
-    signupMsg.style.color = 'var(--red-pen)';
-    signupMsg.textContent = '';
-    var nome = document.getElementById('suNome').value.trim();
-    var userKey = document.getElementById('suUser').value.trim().toLowerCase();
-    var pass = document.getElementById('suPass').value;
-    var emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userKey);
-    if(!nome || !userKey || pass.length < 4){ signupMsg.textContent = 'Preencha todos os campos (senha com ao menos 4 caracteres).'; return; }
-    if(!emailValido){ signupMsg.textContent = 'Digite um e-mail válido.'; return; }
-    if(users[userKey]){ signupMsg.textContent = 'Esse e-mail já está cadastrado.'; return; }
-    users[userKey] = {nome: nome, senha: pass, role: 'professor', licenca: 'pendente'};
-    saveUsers();
-    signupForm.reset();
-    signupMsg.style.color = 'var(--green-check)';
-    signupMsg.textContent = 'Conta criada! Aguarde a liberação da licença pelo administrador.';
-    if(!adminSection.hidden) renderAdminTable();
+    e.preventDefault(); signupMsg.style.color='var(--red-pen)'; signupMsg.textContent='';
+    var nome=document.getElementById('suNome').value.trim(), email=document.getElementById('suUser').value.trim().toLowerCase(), senha=document.getElementById('suPass').value;
+    var emailValido=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if(!nome || !email || senha.length<4){ signupMsg.textContent='Preencha todos os campos (senha com ao menos 4 caracteres).'; return; }
+    if(!emailValido){ signupMsg.textContent='Digite um e-mail válido.'; return; }
+    var fd=new URLSearchParams(); fd.append('acao','cadastro'); fd.append('nome',nome); fd.append('email',email); fd.append('senha',senha);
+    fetch('salvar.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd.toString(),credentials:'same-origin'})
+      .then(function(r){return r.json();}).then(function(data){
+        if(!data.ok){signupMsg.textContent=data.message||'Não foi possível criar a conta.';return;}
+        signupForm.reset(); signupMsg.style.color='var(--green-check)'; signupMsg.textContent='Conta criada! Aguarde a liberação da licença pelo administrador.'; renderAdminTable();
+      }).catch(function(){signupMsg.textContent='Erro de conexão com o servidor.';});
   });
 
   document.querySelectorAll('.login-tabs button').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      document.querySelectorAll('.login-tabs button').forEach(function(b){ b.classList.remove('active'); });
-      btn.classList.add('active');
-      var tab = btn.dataset.tab;
-      loginForm.hidden = tab !== 'entrar';
-      signupForm.hidden = tab !== 'cadastro';
-      loginMsg.textContent = '';
-      signupMsg.textContent = '';
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.login-tabs button').forEach(function(b){b.classList.remove('active');}); btn.classList.add('active');
+      var tab=btn.dataset.tab; loginForm.hidden=tab!=='entrar'; signupForm.hidden=tab!=='cadastro'; loginMsg.textContent=''; signupMsg.textContent='';
     });
   });
 
   function renderAdminTable(){
-    var tbody = document.getElementById('adminTableBody');
-    var rows = '';
-    Object.keys(users).forEach(function(key){
-      var u = users[key];
-      if(u.role === 'admin') return;
-      rows += '<tr><td>' + u.nome + '</td><td>' + key + '</td><td><span class="status-pill ' + u.licenca + '">' + u.licenca + '</span></td><td>' +
-        (u.licenca !== 'liberada' ? '<button type="button" class="liberar" data-user="' + key + '" data-acao="liberar">Liberar licença</button>' : '') +
-        (u.licenca !== 'bloqueada' ? '<button type="button" class="bloquear" data-user="' + key + '" data-acao="bloquear">Bloquear</button>' : '') +
-        '</td></tr>';
-    });
-    tbody.innerHTML = rows || '<tr><td colspan="4" style="color:var(--ink-soft);">Nenhum professor cadastrado ainda.</td></tr>';
-    tbody.querySelectorAll('button').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var key = btn.dataset.user;
-        users[key].licenca = btn.dataset.acao === 'liberar' ? 'liberada' : 'bloqueada';
-        saveUsers();
-        renderAdminTable();
-        if(session && session.user === key) updateAuthUI();
+    var tbody=document.getElementById('adminTableBody');
+    fetch('buscar.php?action=users',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(data){
+      if(!data.ok) return;
+      var rows=''; data.users.forEach(function(u){
+        rows+='<tr><td>'+u.nome+'</td><td>'+u.email+'</td><td><span class="status-pill '+u.licenca+'">'+u.licenca+'</span></td><td>'+
+          (u.licenca!=='liberada'?'<button type="button" class="liberar" data-user="'+u.id+'" data-acao="liberar">Liberar licença</button>':'')+
+          (u.licenca!=='bloqueada'?'<button type="button" class="bloquear" data-user="'+u.id+'" data-acao="bloquear">Bloquear</button>':'')+'</td></tr>';
       });
+      tbody.innerHTML=rows||'<tr><td colspan="4" style="color:var(--ink-soft);">Nenhum professor cadastrado ainda.</td></tr>';
+      tbody.querySelectorAll('button').forEach(function(btn){btn.addEventListener('click',function(){
+        var fd=new URLSearchParams(); fd.append('acao','licenca'); fd.append('user_id',btn.dataset.user); fd.append('status',btn.dataset.acao==='liberar'?'liberada':'bloqueada');
+        fetch('salvar.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd.toString(),credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){if(d.ok){renderAdminTable();loadData();}});
+      });});
     });
   }
 
+  loadData();
   /* ---------- Assistente de acessibilidade (Bit) ---------- */
+
   var launcher = document.getElementById('bit-launcher');
   var bubble = document.getElementById('bit-bubble');
   var panel = document.getElementById('a11yPanel');
