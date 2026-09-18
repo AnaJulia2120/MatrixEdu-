@@ -4,10 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MatrixEdu — Grade de horários &amp; distribuição de notebooks</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#153029">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MatrixEdu">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
+:root{
     --chalk-bg:#153029;
     --chalk-bg-2:#1c3d33;
     --chalk-bg-3:#20463b;
@@ -25,8 +33,8 @@
     --font-display:'Caveat', cursive;
     --font-body:'Space Grotesk', sans-serif;
     --font-mono:'IBM Plex Mono', monospace;
-    --radius:14px;
-    --shadow-paper: 0 10px 30px rgba(0,0,0,.28), 0 2px 0 rgba(0,0,0,.15);
+    --radius:16px;
+    --shadow-paper: 0 16px 36px rgba(0,0,0,.32), 0 4px 10px rgba(0,0,0,.18), 0 2px 0 rgba(0,0,0,.15);
   }
   *{box-sizing:border-box;}
   html{scroll-behavior:smooth;}
@@ -86,11 +94,34 @@
   .btn{
     font-family:var(--font-body); font-weight:600; font-size:.95rem; border:none; cursor:pointer;
     padding:13px 22px; border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; gap:8px;
+    transition:background .18s ease, color .18s ease, border-color .18s ease, transform .12s ease;
   }
+  .btn:active{transform:translateY(1px);}
   .btn-primary{background:var(--amber); color:var(--ink);}
   .btn-primary:hover{background:var(--amber-deep);}
   .btn-ghost{background:transparent; color:var(--chalk-white); border:1.5px solid rgba(244,241,230,.4);}
   .btn-ghost:hover{border-color:var(--amber); color:var(--amber);}
+
+  /* ---------- Instalação como app (PWA) ---------- */
+  .install-fab{
+    position:fixed; right:14px; bottom:14px; z-index:90;
+    width:38px; height:38px; border-radius:50%; border:1.5px solid rgba(244,241,230,.4);
+    background:var(--amber); color:var(--ink); font-size:1rem; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+    box-shadow:0 6px 16px rgba(0,0,0,.3);
+    transition:transform .12s ease, background .18s ease;
+  }
+  .install-fab:hover{background:var(--amber-deep); transform:translateY(-1px);}
+  .install-fab:active{transform:translateY(0);}
+  .install-fab[hidden]{display:none;}
+  .ios-install-banner{
+    position:fixed; left:12px; right:12px; bottom:12px; z-index:80;
+    background:var(--amber); color:var(--ink); border-radius:12px; padding:12px 14px;
+    display:flex; align-items:center; gap:12px; box-shadow:0 10px 26px rgba(0,0,0,.35);
+    font-family:var(--font-body); font-size:.85rem;
+  }
+  .ios-install-banner[hidden]{display:none;}
+  .ios-install-banner button{background:transparent; border:none; color:var(--ink); font-size:1rem; cursor:pointer; margin-left:auto; flex-shrink:0;}
   .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, button:focus-visible{outline:3px solid var(--sky); outline-offset:2px;}
 
   .hero-card{
@@ -116,33 +147,57 @@
   .shift-tabs button{
     font-family:var(--font-mono); font-size:.82rem; letter-spacing:.04em; text-transform:uppercase;
     background:transparent; border:none; color:var(--chalk-white); opacity:.7; padding:9px 20px; border-radius:999px; cursor:pointer;
+    transition:background .18s ease, color .18s ease, opacity .18s ease;
   }
+  .shift-tabs button:hover{opacity:.95;}
   .shift-tabs button.active{background:var(--amber); color:var(--ink); opacity:1; font-weight:600;}
   .shift-meta{font-family:var(--font-mono); font-size:.85rem; color:var(--sky); margin-bottom:22px;}
+
+  /* Abas de sala: cada sala fica "fechada" até ser selecionada — só uma grade completa fica visível por vez */
+  .room-tabs-label{font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; color:#c9c3ae; margin-bottom:10px;}
+  .room-tabs{display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;}
+  .room-tabs button{
+    font-family:var(--font-mono); font-size:.8rem; font-weight:600; letter-spacing:.02em;
+    background:var(--chalk-bg-3); color:var(--chalk-white); border:1.5px solid rgba(244,241,230,.18);
+    padding:9px 18px; border-radius:10px; cursor:pointer; opacity:.75;
+    transition:background .18s ease, color .18s ease, opacity .18s ease, border-color .18s ease, transform .12s ease;
+  }
+  .room-tabs button:hover{opacity:1; transform:translateY(-1px);}
+  .room-tabs button.active{background:var(--sky); color:var(--chalk-bg); opacity:1; border-color:var(--sky); box-shadow:0 4px 12px rgba(147,195,216,.28);}
+  .room-active-title{
+    font-family:var(--font-display); color:var(--amber); font-size:1.7rem; line-height:1;
+    margin:0; transform:rotate(-1.2deg); display:inline-block;
+  }
+  .grade-placeholder{
+    font-family:var(--font-mono); font-size:.85rem; color:#c9c3ae; background:var(--chalk-bg-3);
+    border:1.5px dashed rgba(244,241,230,.28); border-radius:12px; padding:20px 22px; margin-top:4px;
+  }
+  .grade-area[hidden]{display:none;}
+  .grade-area{margin-top:4px;}
+  .grade-area-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:18px 0 14px;}
+  .pdf-btn{padding:9px 16px; font-size:.85rem;}
   .grade-scroll{overflow-x:auto; background:var(--paper); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:6px;}
-  table.grade{border-collapse:collapse; width:100%; min-width:760px; color:var(--ink);}
+  table.grade{border-collapse:collapse; width:100%; min-width:620px; color:var(--ink);}
   table.grade th, table.grade td{border:1px solid var(--paper-line); padding:0;}
   table.grade thead th{
     font-family:var(--font-mono); font-size:.78rem; text-transform:uppercase; letter-spacing:.05em;
-    background:var(--paper-2); padding:12px 8px; position:sticky; top:0;
+    background:var(--paper-2); padding:12px 8px; position:sticky; top:0; border-bottom:2px solid var(--amber-deep);
   }
-  table.grade thead th:first-child{text-align:left; padding-left:14px;}
+  table.grade thead th:first-child{text-align:left; padding-left:14px; left:0; z-index:2;}
   table.grade td.time-cell{
     font-family:var(--font-mono); font-size:.8rem; white-space:nowrap; padding:10px 14px; background:var(--paper-2); color:var(--ink-soft);
+    position:sticky; left:0;
   }
+  table.grade tbody tr:not(.interval):nth-child(even) td.cell{background:rgba(217,201,163,.16);}
+  table.grade tbody tr:not(.interval):hover td.cell{background:#fdf6e3;}
   table.grade tr.interval td{background:repeating-linear-gradient(135deg, var(--paper-2), var(--paper-2) 6px, var(--paper) 6px, var(--paper) 12px); font-family:var(--font-display); font-size:1.2rem; color:var(--red-pen); text-align:center; padding:6px;}
   table.grade td.cell input{
     width:100%; border:none; background:transparent; font-family:var(--font-body); font-size:.86rem; color:var(--ink);
-    padding:10px 8px; text-align:center;
+    padding:12px 8px; text-align:center; transition:background .15s ease;
   }
   table.grade td.cell input::placeholder{color:#b9ac8c;}
   table.grade td.cell input:focus{background:#fffdf6; outline:2px solid var(--amber); outline-offset:-2px;}
   .grade-note{font-family:var(--font-mono); font-size:.8rem; color:#c9c3ae; margin-top:14px;}
-
-  .day-tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap;}
-  .day-tabs button{font-family:var(--font-mono); font-size:.74rem; text-transform:uppercase; letter-spacing:.03em; background:var(--chalk-bg-3); color:var(--chalk-white); border:1px solid rgba(244,241,230,.2); padding:7px 14px; border-radius:8px; cursor:pointer; opacity:.75;}
-  .day-tabs button:hover{opacity:1;}
-  .day-tabs button.active{background:var(--sky); color:var(--chalk-bg); opacity:1; font-weight:600; border-color:var(--sky);}
 
   .bell-card{background:var(--paper); color:var(--ink); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:26px;}
   .bell-status{display:flex; align-items:center; gap:12px;}
@@ -160,9 +215,43 @@
   .checkout-form select:disabled, .checkout-form input:disabled, .checkout-form button:disabled{opacity:.5; cursor:not-allowed;}
   .action-toggle label:has(input:disabled){opacity:.5; cursor:not-allowed;}
 
+  .bell-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .atraso-banner{background:#fff1cf; color:#8a6410; border:1px solid #f0d998; border-radius:8px; padding:10px 14px; font-size:.85rem; font-weight:600; margin-top:14px;}
+  .atraso-banner[hidden]{display:none;}
+
+  /* ---------- Check-in/checkout de aula ---------- */
+  .checkin-card{background:var(--paper); color:var(--ink); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:22px 24px; margin-bottom:26px;}
+  .checkin-card h3{font-size:1.1rem;}
+  .checkin-card .locked-msg{font-family:var(--font-mono); font-size:.82rem; color:var(--ink-soft); margin:0;}
+  .checkin-row{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-top:10px;}
+  .checkin-row .field{display:flex; flex-direction:column; gap:6px; min-width:160px;}
+  .checkin-row label{font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft);}
+  .checkin-row select{padding:10px 12px; border-radius:8px; border:1.5px solid var(--paper-line); font-family:var(--font-body); font-size:.9rem; background:#fffdf7; color:var(--ink);}
+  .checkin-row .periodo-atual{font-family:var(--font-mono); font-size:.85rem; padding:10px 0;}
+  .checkin-msg{font-family:var(--font-mono); font-size:.78rem; margin-top:10px; color:var(--red-pen);}
+
+  /* ---------- Tabela de presença (admin) ---------- */
+  .attendance-table-wrap{background:var(--paper); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:10px; overflow-x:auto; margin-top:24px;}
+  table.attendance-table{border-collapse:collapse; width:100%; color:var(--ink); min-width:680px;}
+  table.attendance-table th, table.attendance-table td{border-bottom:1px solid var(--paper-line); padding:11px 13px; text-align:left; font-size:.85rem;}
+  .access-log-wrap{background:var(--paper); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:10px; overflow-x:auto; margin-top:24px;}
+  table.access-log-table{border-collapse:collapse; width:100%; color:var(--ink); min-width:680px;}
+  table.access-log-table th, table.access-log-table td{border-bottom:1px solid var(--paper-line); padding:11px 13px; text-align:left; font-size:.85rem;}
+  table.attendance-table thead th{font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); background:var(--paper-2);}
+  .status-pill.no-horario{background:#e2f0d9; color:#4c7635;}
+  .status-pill.atrasado{background:#fde3dd; color:#a8402f;}
+  .status-pill.antecipado{background:#fff1cf; color:#8a6410;}
+
   /* ---------- Carrinhos section ---------- */
   .cart-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-bottom:40px;}
-  .cart-card{background:var(--paper); color:var(--ink); border-radius:var(--radius); padding:22px; box-shadow:var(--shadow-paper);}
+  .cart-card{
+    background:var(--paper); color:var(--ink); border-radius:var(--radius); padding:22px; box-shadow:var(--shadow-paper);
+    cursor:pointer; border:2px solid transparent; transition:transform .15s ease, border-color .15s ease;
+  }
+  .cart-card:hover{transform:translateY(-2px);}
+  .cart-card.active{border-color:var(--sky);}
+  .cart-card:focus-visible{outline:3px solid var(--sky); outline-offset:2px;}
+  .cart-card .tap-hint{font-family:var(--font-mono); font-size:.68rem; color:var(--ink-soft); margin-top:10px; display:block;}
   .cart-card .tag{font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; background:var(--chalk-bg); color:var(--chalk-white); display:inline-block; padding:4px 10px; border-radius:999px; margin-bottom:10px;}
   .cart-card h3{font-size:1.35rem;}
   .gauge{height:10px; border-radius:999px; background:var(--paper-2); overflow:hidden; margin:14px 0 8px;}
@@ -192,6 +281,20 @@
   .badge.out{background:#fde3dd; color:#a8402f;}
   .badge.in{background:#e2f0d9; color:#4c7635;}
   .log-empty{color:#b9ac8c; font-size:.86rem;}
+  .remove-subst{background:transparent; border:1.5px solid var(--red-pen); color:var(--red-pen); border-radius:999px; width:26px; height:26px; font-size:.8rem; line-height:1; cursor:pointer; flex-shrink:0; transition:background .15s ease, color .15s ease;}
+  .remove-subst:hover{background:var(--red-pen); color:#fff;}
+
+  /* ---------- Registrar falta e substituição de aula ---------- */
+  .subst-form{background:var(--paper); color:var(--ink); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:22px; margin-top:14px;}
+  .subst-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px 16px;}
+  .subst-form .field{display:flex; flex-direction:column; gap:6px;}
+  .subst-form label{font-family:var(--font-mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft);}
+  .subst-form input, .subst-form select{padding:10px 12px; border-radius:8px; border:1.5px solid var(--paper-line); font-family:var(--font-body); font-size:.9rem; background:#fff; color:var(--ink);}
+  .subst-form input:focus, .subst-form select:focus{outline:2px solid var(--amber); outline-offset:1px;}
+  .subst-form button[type=submit]{margin-top:18px;}
+  .subst-list-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin:24px 0 12px;}
+  .subst-list-head h4{margin:0; display:flex; align-items:center; gap:10px; color:var(--chalk-white);}
+  .subst-list-wrap{background:var(--paper); color:var(--ink); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:18px 20px;}
 
   /* stamp overlay */
   .stamp-overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:300;}
@@ -281,6 +384,8 @@
   .login-form input{width:100%; padding:11px 12px; border-radius:8px; border:1.5px solid var(--paper-line); font-family:var(--font-body); font-size:.95rem; background:#fffdf7; color:var(--ink);}
   .login-form .submit{width:100%; justify-content:center; margin-top:16px;}
   .form-msg{font-family:var(--font-mono); font-size:.78rem; margin-top:10px; color:var(--red-pen);}
+  .demo-code-box{font-family:var(--font-mono); font-size:.82rem; background:var(--paper-2); border:1.5px dashed var(--amber-deep); color:var(--ink); border-radius:8px; padding:10px 12px; margin:10px 0;}
+  .demo-code-box[hidden]{display:none;}
   .login-note{font-size:.76rem; color:var(--ink-soft); margin-top:10px;}
 
   #admin{background:var(--chalk-bg-2); border-top:1px solid rgba(244,241,230,.1);}
@@ -297,10 +402,40 @@
   .admin-table button.bloquear{border-color:var(--red-pen); color:#a8402f;}
   .admin-note{font-family:var(--font-mono); font-size:.78rem; color:#c9c3ae; margin-top:16px;}
 
+  /* ---------- Frequência de professores ---------- */
+  .attendance-day-picker{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:14px 0 18px;}
+  .attendance-day-picker label{font-family:var(--font-mono); font-size:.76rem; text-transform:uppercase; letter-spacing:.05em; color:#c9c3ae;}
+  .attendance-day-picker input[type=date]{padding:9px 12px; border-radius:8px; border:1.5px solid rgba(244,241,230,.3); background:var(--chalk-bg-3); color:var(--chalk-white); font-family:var(--font-body); font-size:.9rem;}
+  .teacher-attendance-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  .teacher-att-card{background:var(--paper); color:var(--ink); border-radius:var(--radius); box-shadow:var(--shadow-paper); padding:20px 22px;}
+  .teacher-att-card h4{font-size:1rem; display:flex; align-items:center; gap:10px; margin:0 0 14px;}
+  .teacher-att-card .log-list{max-height:260px;}
+  .teacher-att-card .log-list li{display:block; border-bottom:1px dashed var(--paper-line); padding-bottom:8px; font-weight:600;}
+  .count-pill{font-family:var(--font-mono); font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; background:var(--paper-2); color:var(--ink-soft);}
+  .teacher-att-card.present h4 .count-pill{background:#e2f0d9; color:#4c7635;}
+  .teacher-att-card.absent h4 .count-pill{background:#fde3dd; color:#a8402f;}
+  .subst-note{font-family:var(--font-mono); font-size:.72rem; color:var(--ink-soft); font-weight:400;}
+  @media (max-width:700px){ .teacher-attendance-grid{grid-template-columns:1fr;} }
+
   /* ---------- High contrast mode ---------- */
   body.contrast{--chalk-bg:#000000; --chalk-bg-2:#000000; --chalk-bg-3:#0d0d0d; --paper:#ffffff; --paper-2:#f0f0f0; --paper-line:#000000; --ink:#000000; --ink-soft:#000000; --chalk-white:#ffffff; --amber:#ffd23f; --sky:#7fdcff; --red-pen:#ff5a4a; --green-check:#5fe35f;}
   body.contrast{background-image:none;}
   body.contrast table.grade td.cell input:focus{outline:3px solid #000;}
+
+  /* ---------- Área de impressão / exportação em PDF ---------- */
+  #printArea{display:none;}
+  @media print{
+    body > *:not(#printArea){display:none !important;}
+    #printArea{
+      display:block !important; position:static; background:#fff; color:#111;
+      font-family:Arial, Helvetica, sans-serif; padding:0;
+    }
+    #printArea h2{font-family:Arial, Helvetica, sans-serif; font-size:18px; margin:0 0 14px; color:#111;}
+    #printArea table{width:100%; border-collapse:collapse;}
+    #printArea th, #printArea td{border:1px solid #999; padding:6px 8px; font-size:12px; text-align:center; color:#111;}
+    #printArea thead th{background:#eee;}
+    #printArea tr.interval td{background:#f3f3f3; font-style:italic;}
+  }
 
   @media (max-width: 900px){
     .hero-inner, #acessibilidade .a11y-grid, .checkout-panel{grid-template-columns:1fr;}
@@ -310,6 +445,7 @@
     .burger{display:inline-block;}
     .hero-card{transform:none;}
   }
+
 </style>
 </head>
 <body>
@@ -322,6 +458,8 @@
     <div class="vw-plugin-top-wrapper"></div>
   </div>
 </div>
+
+<button id="installBtn" class="install-fab" type="button" title="Instalar app" aria-label="Instalar app" hidden>📲</button>
 
 <header class="site">
   <div class="wrap nav-inner">
@@ -341,6 +479,11 @@
     </nav>
   </div>
 </header>
+
+<div class="ios-install-banner" id="iosInstallBanner" hidden role="note">
+  <span>📲 Para instalar o MatrixEdu no seu iPhone/iPad: toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong>.</span>
+  <button type="button" id="iosInstallClose" aria-label="Fechar aviso">✕</button>
+</div>
 
 <main id="conteudo">
   <section class="hero" id="inicio">
@@ -382,7 +525,31 @@
             <div class="bell-sub" id="bellSubText"></div>
           </div>
         </div>
-        <button type="button" class="btn btn-ghost" id="bellToggleBtn">🔔 Ativar notificações de aula</button>
+        <div class="bell-actions">
+          <button type="button" class="btn btn-ghost" id="bellToggleBtn">🔔 Ativar notificações de aula</button>
+          <button type="button" class="btn btn-ghost" id="soundToggleBtn">🔊 Som do sino ativado</button>
+        </div>
+      </div>
+      <div class="atraso-banner" id="atrasoBanner" role="status" hidden></div>
+
+      <div class="checkin-card" id="checkinCard">
+        <h3>Registrar entrada e saída na aula</h3>
+        <p class="locked-msg" id="checkinLockedMsg">Faça login como professor(a) para registrar sua entrada e saída das aulas.</p>
+        <div id="checkinForm" hidden>
+          <div class="checkin-row">
+            <div class="field">
+              <label for="ciSala">Sala</label>
+              <select id="ciSala"></select>
+            </div>
+            <div class="field" style="min-width:220px;">
+              <label>Período atual</label>
+              <div class="periodo-atual" id="ciPeriodoAtual">—</div>
+            </div>
+            <button type="button" class="btn btn-primary" id="ciEntradaBtn">Registrar entrada</button>
+            <button type="button" class="btn btn-ghost" id="ciSaidaBtn">Registrar saída</button>
+          </div>
+          <p class="checkin-msg" id="checkinMsg" role="status"></p>
+        </div>
       </div>
 
       <div class="shift-tabs" role="tablist" aria-label="Selecionar turno">
@@ -391,28 +558,32 @@
       </div>
 
       <div id="painelManha" role="tabpanel" aria-labelledby="tabManha">
-        <p class="shift-meta">Turno da manhã · 07h00 às 14h00 · salas 6A, 6B, 7A, 7B, 8A, 8B, 9A, 9B</p>
-        <div class="day-tabs" role="tablist" aria-label="Dia da semana, turno da manhã" data-shift="manha">
-          <button type="button" data-day="0" class="active">Segunda</button>
-          <button type="button" data-day="1">Terça</button>
-          <button type="button" data-day="2">Quarta</button>
-          <button type="button" data-day="3">Quinta</button>
-          <button type="button" data-day="4">Sexta</button>
+        <p class="shift-meta">Turno da manhã · 07h00 às 14h00 · 8 salas (6º ao 9º ano)</p>
+        <p class="room-tabs-label">Clique em uma sala para abrir a grade dela — clique de novo para fechar</p>
+        <div class="room-tabs" role="tablist" aria-label="Selecionar sala, turno da manhã" id="roomTabsManha" data-shift="manha"></div>
+        <p class="grade-placeholder" id="gradePlaceholderManha">Selecione uma sala acima para ver a grade completa da semana.</p>
+        <div class="grade-area" id="gradeAreaManha" hidden>
+          <div class="grade-area-head">
+            <h3 class="room-active-title" id="roomTitleManha"></h3>
+            <button type="button" class="btn btn-ghost pdf-btn" id="pdfBtnManha">📄 Baixar PDF</button>
+          </div>
+          <div class="grade-scroll"><div id="gradeManha"></div></div>
         </div>
-        <div class="grade-scroll"><div id="gradeManha"></div></div>
       </div>
       <div id="painelTarde" role="tabpanel" aria-labelledby="tabTarde" hidden>
-        <p class="shift-meta">Turno da tarde · 14h00 às 21h00 · salas 1A, 1B, 2A, 2B, 3A, 3B</p>
-        <div class="day-tabs" role="tablist" aria-label="Dia da semana, turno da tarde" data-shift="tarde">
-          <button type="button" data-day="0" class="active">Segunda</button>
-          <button type="button" data-day="1">Terça</button>
-          <button type="button" data-day="2">Quarta</button>
-          <button type="button" data-day="3">Quinta</button>
-          <button type="button" data-day="4">Sexta</button>
+        <p class="shift-meta">Turno da tarde · 14h00 às 21h00 · 6 salas (1ª à 3ª série)</p>
+        <p class="room-tabs-label">Clique em uma sala para abrir a grade dela — clique de novo para fechar</p>
+        <div class="room-tabs" role="tablist" aria-label="Selecionar sala, turno da tarde" id="roomTabsTarde" data-shift="tarde"></div>
+        <p class="grade-placeholder" id="gradePlaceholderTarde">Selecione uma sala acima para ver a grade completa da semana.</p>
+        <div class="grade-area" id="gradeAreaTarde" hidden>
+          <div class="grade-area-head">
+            <h3 class="room-active-title" id="roomTitleTarde"></h3>
+            <button type="button" class="btn btn-ghost pdf-btn" id="pdfBtnTarde">📄 Baixar PDF</button>
+          </div>
+          <div class="grade-scroll"><div id="gradeTarde"></div></div>
         </div>
-        <div class="grade-scroll"><div id="gradeTarde"></div></div>
       </div>
-      <p class="grade-note">Dica: use Tab para navegar entre as células com o teclado.</p>
+      <p class="grade-note">Dica: use Tab para navegar entre as células com o teclado. Cada sala tem sua própria grade com os cinco dias da semana lado a lado.</p>
     </div>
   </section>
 
@@ -425,6 +596,15 @@
       </div>
 
       <div class="cart-grid" id="cartGrid"></div>
+
+      <p class="grade-placeholder" id="cartPlaceholder">Clique em um carrinho acima para ver o histórico completo — clique de novo para fechar.</p>
+      <div class="grade-area" id="cartDetailArea" hidden>
+        <div class="grade-area-head">
+          <h3 class="room-active-title" id="cartDetailTitle"></h3>
+          <button type="button" class="btn btn-ghost pdf-btn" id="pdfBtnCart">📄 Baixar PDF</button>
+        </div>
+        <ul class="log-list" id="cartDetailLog"></ul>
+      </div>
 
       <div class="checkout-panel">
         <form class="checkout-form" id="checkoutForm">
@@ -518,16 +698,92 @@
         <h2>Central de licenças</h2>
         <p>Libere ou bloqueie o acesso de professores(as) ao sistema de retirada de carrinhos de notebooks.</p>
       </div>
-      <div class="admin-table-wrap">
+
+      <h3>Log de tudo</h3>
+      <p style="font-size:.9rem; color:#d8d3c2;">Todas as atividades do sistema em um só lugar: acessos, retiradas e devoluções de carrinho, entradas e saídas de aula, cadastros e mudanças de licença.</p>
+      <div class="access-log-wrap">
+        <table class="access-log-table">
+          <thead><tr><th>Data e hora</th><th>Tipo</th><th>Usuário</th><th>Detalhe</th></tr></thead>
+          <tbody id="activityLogTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="admin-table-wrap" style="margin-top:30px;">
         <table class="admin-table">
           <thead><tr><th>Nome</th><th>E-mail</th><th>Status</th><th>Ação</th></tr></thead>
           <tbody id="adminTableBody"></tbody>
         </table>
       </div>
       <p class="admin-note">Contas novas entram como "pendente" ao serem criadas em "Criar conta" na área de login, até que você libere a licença aqui.</p>
+
+      <h3 style="margin-top:30px;">Frequência de professores no dia</h3>
+      <p style="font-size:.9rem; color:#d8d3c2;">Com base nos registros de entrada em aula: quem foi à escola e quem faltou na data escolhida.</p>
+      <div class="attendance-day-picker">
+        <label for="attDateFilter">Data</label>
+        <input type="date" id="attDateFilter">
+        <button type="button" class="btn btn-ghost pdf-btn" id="pdfBtnFrequencia">📄 Baixar PDF</button>
+      </div>
+      <div class="teacher-attendance-grid">
+        <div class="teacher-att-card present">
+          <h4>Foram à escola <span class="count-pill" id="teacherPresentCount">0</span></h4>
+          <ul class="log-list" id="teacherPresentList"></ul>
+        </div>
+        <div class="teacher-att-card absent">
+          <h4>Faltaram <span class="count-pill" id="teacherAbsentCount">0</span></h4>
+          <ul class="log-list" id="teacherAbsentList"></ul>
+        </div>
+      </div>
+
+      <h3 style="margin-top:30px;">Registrar falta e substituição de aula</h3>
+      <p style="font-size:.9rem; color:#d8d3c2;">Quando um(a) professor(a) falta, registre aqui quem vai assumir a aula naquele horário. A matéria é preenchida automaticamente com base na grade, quando disponível.</p>
+      <form class="subst-form" id="substForm">
+        <div class="subst-grid">
+          <div class="field"><label for="subData">Data</label><input type="date" id="subData" required></div>
+          <div class="field"><label for="subTurno">Turno</label>
+            <select id="subTurno" required><option value="manha">Manhã</option><option value="tarde">Tarde</option></select>
+          </div>
+          <div class="field"><label for="subDia">Dia da semana</label><select id="subDia" required></select></div>
+          <div class="field"><label for="subSala">Sala</label><select id="subSala" required></select></div>
+          <div class="field"><label for="subPeriodo">Período</label><select id="subPeriodo" required></select></div>
+          <div class="field"><label for="subMateria">Matéria</label><input type="text" id="subMateria" placeholder="Preenchida pela grade, se houver"></div>
+          <div class="field"><label for="subProfessorFaltou">Professor(a) que faltou</label><input type="text" id="subProfessorFaltou" list="professoresDatalist" placeholder="Nome de quem faltou" required></div>
+          <div class="field"><label for="subProfessorNovo">Professor(a) substituto(a)</label><input type="text" id="subProfessorNovo" list="professoresDatalist" placeholder="Nome de quem vai substituir" required></div>
+        </div>
+        <datalist id="professoresDatalist"></datalist>
+        <button type="submit" class="btn btn-primary">Registrar substituição</button>
+        <p id="subFormMsg" role="status" style="font-family:var(--font-mono); font-size:.8rem; margin-top:10px; color:var(--red-pen);"></p>
+      </form>
+
+      <div class="subst-list-head">
+        <h4>Substituições da data selecionada <span class="count-pill" id="substCount">0</span></h4>
+        <button type="button" class="btn btn-ghost pdf-btn" id="pdfBtnSubst">📄 Baixar PDF</button>
+      </div>
+      <div class="subst-list-wrap">
+        <ul class="log-list" id="substList"></ul>
+      </div>
+
+      <h3 style="margin-top:30px;">Entradas e saídas das aulas</h3>
+      <p style="font-size:.9rem; color:#d8d3c2;">Veja quem entrou em cada aula, no horário ou atrasado, e quem saiu no horário certo ou antes do previsto.</p>
+      <div class="attendance-table-wrap">
+        <table class="attendance-table">
+          <thead><tr><th>Data</th><th>Sala</th><th>Professor(a)</th><th>Período</th><th>Ação</th><th>Horário</th><th>Status</th></tr></thead>
+          <tbody id="attendanceTableBody"></tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top:30px;">Log de acessos</h3>
+      <p style="font-size:.9rem; color:#d8d3c2;">Registro de todas as tentativas de login no sistema, feitas ou não com sucesso.</p>
+      <div class="access-log-wrap">
+        <table class="access-log-table">
+          <thead><tr><th>Data e hora</th><th>E-mail</th><th>Nome</th><th>Perfil</th><th>Resultado</th></tr></thead>
+          <tbody id="accessLogTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 </main>
+
+<div id="printArea" aria-hidden="true"></div>
 
 <footer>
   <div class="wrap">
@@ -615,8 +871,20 @@
     <p id="signupMsg" role="status" class="form-msg"></p>
     <p class="login-note">Sua conta fica pendente até um(a) administrador(a) liberar a licença.</p>
   </form>
+
+  <form id="verifyForm" class="login-form" hidden>
+    <h3 style="font-size:1.25rem;">Verifique seu e-mail</h3>
+    <p class="login-note" id="verifyIntro"></p>
+    <div class="demo-code-box" id="demoCodeBox" hidden></div>
+    <label for="verifyCode">Código de verificação</label>
+    <input type="text" id="verifyCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+    <button type="submit" class="btn btn-primary submit">Confirmar e-mail</button>
+    <button type="button" class="btn btn-ghost submit" id="verifyCancelBtn" style="margin-top:8px;">Cancelar cadastro</button>
+    <p id="verifyMsg" role="status" class="form-msg"></p>
+  </form>
 </aside>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -640,13 +908,17 @@
 
   var periodosManha = [
     {t:'07:00–07:50', ini:420, fim:470}, {t:'07:50–08:40', ini:470, fim:520}, {t:'08:40–09:30', ini:520, fim:570}, {t:'09:30–10:20', ini:570, fim:620},
-    {t:'10:20–10:40', ini:620, fim:640, intervalo:true},
-    {t:'10:40–11:30', ini:640, fim:690}, {t:'11:30–12:20', ini:690, fim:740}, {t:'12:20–13:10', ini:740, fim:790}, {t:'13:10–14:00', ini:790, fim:840}
+    {t:'10:20–10:30', ini:620, fim:630, intervalo:true},
+    {t:'10:30–11:20', ini:630, fim:680}, {t:'11:20–12:10', ini:680, fim:730},
+    {t:'12:10–12:20', ini:730, fim:740, intervalo:true},
+    {t:'12:20–13:10', ini:740, fim:790}, {t:'13:10–14:00', ini:790, fim:840}
   ];
   var periodosTarde = [
     {t:'14:00–14:50', ini:840, fim:890}, {t:'14:50–15:40', ini:890, fim:940}, {t:'15:40–16:30', ini:940, fim:990}, {t:'16:30–17:20', ini:990, fim:1040},
-    {t:'17:20–17:40', ini:1040, fim:1060, intervalo:true},
-    {t:'17:40–18:30', ini:1060, fim:1110}, {t:'18:30–19:20', ini:1110, fim:1160}, {t:'19:20–20:10', ini:1160, fim:1210}, {t:'20:10–21:00', ini:1210, fim:1260}
+    {t:'17:20–17:30', ini:1040, fim:1050, intervalo:true},
+    {t:'17:30–18:20', ini:1050, fim:1100}, {t:'18:20–19:10', ini:1100, fim:1150},
+    {t:'19:10–19:20', ini:1150, fim:1160, intervalo:true},
+    {t:'19:20–20:10', ini:1160, fim:1210}, {t:'20:10–21:00', ini:1210, fim:1260}
   ];
 
   function pad2(n){ return n.toString().padStart(2,'0'); }
@@ -656,20 +928,29 @@
   var gradeData = {};
   try{ gradeData = JSON.parse(localStorage.getItem(GRADE_KEY)) || {}; }catch(e){ gradeData = {}; }
 
-  function buildGrade(containerId, shiftKey, salas, periodos, dayIdx){
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* Cada sala tem sua própria grade "fechada" (uma aba por sala) mostrando a semana inteira,
+     em vez de uma tabela gigante com todas as salas misturadas. A grade só aparece depois
+     que uma sala é clicada. */
+  function buildGrade(containerId, shiftKey, sala, periodos){
     var el = document.getElementById(containerId);
     var html = '<table class="grade"><thead><tr><th>Horário</th>';
-    salas.forEach(function(s){ html += '<th>' + s + '</th>'; });
+    diasSemana.forEach(function(d){ html += '<th>' + d + '</th>'; });
     html += '</tr></thead><tbody>';
     periodos.forEach(function(p, i){
       if(p.intervalo){
-        html += '<tr class="interval"><td class="time-cell">' + p.t + '</td><td colspan="' + salas.length + '">Intervalo</td></tr>';
+        html += '<tr class="interval"><td class="time-cell">' + p.t + '</td><td colspan="' + diasSemana.length + '">Intervalo</td></tr>';
       } else {
         html += '<tr><td class="time-cell">' + p.t + '</td>';
-        salas.forEach(function(sala){
+        diasSemana.forEach(function(dia, dayIdx){
           var key = shiftKey + '_' + dayIdx + '_' + i + '_' + sala;
           var val = gradeData[key] ? gradeData[key].replace(/"/g,'&quot;') : '';
-          html += '<td class="cell"><input type="text" placeholder="Disciplina" value="' + val + '" data-key="' + key + '" aria-label="Disciplina, sala ' + sala + ', ' + diasSemana[dayIdx] + ', ' + p.t + '"></td>';
+          html += '<td class="cell"><input type="text" placeholder="Disciplina" value="' + val + '" data-key="' + key + '" aria-label="Disciplina, sala ' + sala + ', ' + dia + ', ' + p.t + '"></td>';
         });
         html += '</tr>';
       }
@@ -684,29 +965,87 @@
     });
   }
 
-  var currentDay = {manha:0, tarde:0};
-  (function(){
-    var idxHoje = new Date().getDay() - 1; // 0 Seg ... 4 Sex
-    if(idxHoje >= 0 && idxHoje <= 4){ currentDay.manha = idxHoje; currentDay.tarde = idxHoje; }
-  })();
+  /* Nenhuma sala aberta por padrão — a grade fica escondida até o clique */
+  var currentRoom = {manha:null, tarde:null};
 
-  function renderGradeManha(){ buildGrade('gradeManha', 'manha', salasManha, periodosManha, currentDay.manha); }
-  function renderGradeTarde(){ buildGrade('gradeTarde', 'tarde', salasTarde, periodosTarde, currentDay.tarde); }
-  renderGradeManha();
-  renderGradeTarde();
+  function renderGradeManha(){
+    buildGrade('gradeManha', 'manha', currentRoom.manha, periodosManha);
+    document.getElementById('roomTitleManha').textContent = 'Sala ' + currentRoom.manha;
+  }
+  function renderGradeTarde(){
+    buildGrade('gradeTarde', 'tarde', currentRoom.tarde, periodosTarde);
+    document.getElementById('roomTitleTarde').textContent = 'Sala ' + currentRoom.tarde;
+  }
 
-  document.querySelectorAll('.day-tabs').forEach(function(tabs){
-    var shift = tabs.dataset.shift;
-    var buttons = tabs.querySelectorAll('button');
-    buttons.forEach(function(b){ b.classList.toggle('active', parseInt(b.dataset.day, 10) === currentDay[shift]); });
-    buttons.forEach(function(b){
+  function buildRoomTabs(containerId, shift, salas){
+    var el = document.getElementById(containerId);
+    var suffix = shift === 'manha' ? 'Manha' : 'Tarde';
+    var areaEl = document.getElementById('gradeArea' + suffix);
+    var placeholderEl = document.getElementById('gradePlaceholder' + suffix);
+    el.innerHTML = salas.map(function(s){
+      return '<button type="button" role="tab" aria-selected="false" data-room="' + s + '">Sala ' + s + '</button>';
+    }).join('');
+    el.querySelectorAll('button').forEach(function(b){
       b.addEventListener('click', function(){
-        currentDay[shift] = parseInt(b.dataset.day, 10);
-        buttons.forEach(function(x){ x.classList.remove('active'); });
+        var jaAberta = b.classList.contains('active');
+        el.querySelectorAll('button').forEach(function(x){ x.classList.remove('active'); x.setAttribute('aria-selected', 'false'); });
+        if(jaAberta){
+          /* clicar de novo na sala aberta fecha a grade */
+          currentRoom[shift] = null;
+          areaEl.hidden = true;
+          placeholderEl.hidden = false;
+          return;
+        }
+        currentRoom[shift] = b.dataset.room;
         b.classList.add('active');
+        b.setAttribute('aria-selected', 'true');
+        placeholderEl.hidden = true;
+        areaEl.hidden = false;
         if(shift === 'manha') renderGradeManha(); else renderGradeTarde();
       });
     });
+  }
+  buildRoomTabs('roomTabsManha', 'manha', salasManha);
+  buildRoomTabs('roomTabsTarde', 'tarde', salasTarde);
+
+  /* ---------- Exportar relatórios em PDF (via impressão do navegador) ---------- */
+  function printReport(title, innerHtml){
+    var printArea = document.getElementById('printArea');
+    printArea.innerHTML = '<h2>MatrixEdu — ' + escapeHtml(title) + '</h2>' + innerHtml;
+    window.print();
+  }
+
+  function buildPrintableTable(shiftKey, sala, periodos){
+    var html = '<table><thead><tr><th>Horário</th>';
+    diasSemana.forEach(function(d){ html += '<th>' + d + '</th>'; });
+    html += '</tr></thead><tbody>';
+    periodos.forEach(function(p, i){
+      if(p.intervalo){
+        html += '<tr class="interval"><td>' + p.t + '</td><td colspan="' + diasSemana.length + '">Intervalo</td></tr>';
+      } else {
+        html += '<tr><td>' + p.t + '</td>';
+        diasSemana.forEach(function(dia, dayIdx){
+          var key = shiftKey + '_' + dayIdx + '_' + i + '_' + sala;
+          var val = gradeData[key] ? escapeHtml(gradeData[key]) : '—';
+          html += '<td>' + val + '</td>';
+        });
+        html += '</tr>';
+      }
+    });
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function exportGradePDF(shiftKey, shiftLabel, sala, periodos){
+    if(!sala) return;
+    printReport('Grade da Sala ' + sala + ' · ' + shiftLabel, buildPrintableTable(shiftKey, sala, periodos));
+  }
+
+  document.getElementById('pdfBtnManha').addEventListener('click', function(){
+    exportGradePDF('manha', 'Manhã · 07h–14h', currentRoom.manha, periodosManha);
+  });
+  document.getElementById('pdfBtnTarde').addEventListener('click', function(){
+    exportGradePDF('tarde', 'Tarde · 14h–21h', currentRoom.tarde, periodosTarde);
   });
 
   var tabManha = document.getElementById('tabManha');
@@ -744,19 +1083,89 @@
   function saveLog(){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
 
   var cartGrid = document.getElementById('cartGrid');
+  var cartPlaceholder = document.getElementById('cartPlaceholder');
+  var cartDetailArea = document.getElementById('cartDetailArea');
+  var currentCart = null;
+
   function renderCarts(){
     var html = '';
     Object.keys(carts).forEach(function(key){
       var c = carts[key];
       var disponiveis = c.total - c.fora;
       var pct = Math.round((disponiveis / c.total) * 100);
-      html += '<div class="cart-card"><span class="tag">' + c.total + ' equipamentos</span><h3>' + c.nome + '</h3>' +
+      var isActive = currentCart === key;
+      html += '<div class="cart-card' + (isActive ? ' active' : '') + '" role="button" tabindex="0" data-cart="' + key + '" aria-pressed="' + isActive + '">' +
+        '<span class="tag">' + c.total + ' equipamentos</span><h3>' + c.nome + '</h3>' +
         '<div class="gauge"><div class="gauge-fill" style="width:' + pct + '%"></div></div>' +
-        '<div class="cart-stats"><span><strong>' + disponiveis + '</strong> disponíveis</span><span><strong>' + c.fora + '</strong> em uso</span></div></div>';
+        '<div class="cart-stats"><span><strong>' + disponiveis + '</strong> disponíveis</span><span><strong>' + c.fora + '</strong> em uso</span></div>' +
+        '<span class="tap-hint">' + (isActive ? 'Toque para fechar o histórico' : 'Toque para ver o histórico') + '</span></div>';
     });
     cartGrid.innerHTML = html;
+    cartGrid.querySelectorAll('.cart-card').forEach(function(card){
+      card.addEventListener('click', function(){ toggleCart(card.dataset.cart); });
+      card.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggleCart(card.dataset.cart); }
+      });
+    });
+  }
+
+  function cartEntries(key){
+    var c = carts[key];
+    return log.filter(function(entry){ return entry.chave === key || entry.carrinho === c.nome; });
+  }
+
+  function renderCartDetail(){
+    if(!currentCart) return;
+    var c = carts[currentCart];
+    document.getElementById('cartDetailTitle').textContent = c.nome;
+    var entradas = cartEntries(currentCart);
+    var listEl = document.getElementById('cartDetailLog');
+    if(entradas.length === 0){
+      listEl.innerHTML = '<li class="log-empty">Nenhuma movimentação registrada ainda para este carrinho.</li>';
+      return;
+    }
+    var html = '';
+    entradas.slice(0, 50).forEach(function(entry){
+      var profTxt = entry.professor && entry.professor !== '—' ? entry.professor + ' · ' : '';
+      var dataTxt = entry.data ? entry.data + ' · ' : '';
+      html += '<li><span><span class="who">' + entry.sala + '</span> · ' + dataTxt + profTxt + '(' + entry.qtd + ') · ' + entry.hora + '</span>' +
+        '<span class="badge ' + (entry.acao === 'retirada' ? 'out' : 'in') + '">' + (entry.acao === 'retirada' ? 'Retirada' : 'Devolução') + '</span></li>';
+    });
+    listEl.innerHTML = html;
+  }
+
+  function toggleCart(key){
+    if(currentCart === key){
+      currentCart = null;
+      cartDetailArea.hidden = true;
+      cartPlaceholder.hidden = false;
+      renderCarts();
+      return;
+    }
+    currentCart = key;
+    cartPlaceholder.hidden = true;
+    cartDetailArea.hidden = false;
+    renderCarts();
+    renderCartDetail();
   }
   renderCarts();
+
+  document.getElementById('pdfBtnCart').addEventListener('click', function(){
+    if(!currentCart) return;
+    var c = carts[currentCart];
+    var entradas = cartEntries(currentCart);
+    var rowsHtml = '<table><thead><tr><th>Data</th><th>Sala</th><th>Professor(a)</th><th>Ação</th><th>Quantidade</th><th>Horário</th></tr></thead><tbody>';
+    if(entradas.length === 0){
+      rowsHtml += '<tr><td colspan="6">Nenhuma movimentação registrada.</td></tr>';
+    } else {
+      entradas.forEach(function(entry){
+        rowsHtml += '<tr><td>' + escapeHtml(entry.data || '—') + '</td><td>' + escapeHtml(entry.sala) + '</td><td>' + escapeHtml(entry.professor || '—') +
+          '</td><td>' + (entry.acao === 'retirada' ? 'Retirada' : 'Devolução') + '</td><td>' + entry.qtd + '</td><td>' + entry.hora + '</td></tr>';
+      });
+    }
+    rowsHtml += '</tbody></table>';
+    printReport('Histórico do ' + c.nome, rowsHtml);
+  });
 
   var fSala = document.getElementById('fSala');
   var ogManha = fSala.querySelector('optgroup[label="Manhã"]');
@@ -862,6 +1271,51 @@
   });
   function formMsgIndependent(t){ bellSubText.textContent = t; }
 
+  /* ---------- Som do sino ---------- */
+  var SOUND_KEY = 'matrixedu_sound_v1';
+  var soundEnabled = true;
+  try{ var sv = localStorage.getItem(SOUND_KEY); soundEnabled = sv === null ? true : sv === '1'; }catch(e){ soundEnabled = true; }
+  var audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if(Ctx){ try{ audioCtx = new Ctx(); }catch(e){ audioCtx = null; } }
+    }
+    return audioCtx;
+  }
+  function ringTone(freqs, dur){
+    if(!soundEnabled) return;
+    var ctx = getAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended') ctx.resume();
+    var t = ctx.currentTime;
+    freqs.forEach(function(f, i){
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = f;
+      gain.gain.setValueAtTime(0, t + i * dur);
+      gain.gain.linearRampToValueAtTime(0.18, t + i * dur + 0.02);
+      gain.gain.linearRampToValueAtTime(0, t + i * dur + dur * 0.9);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t + i * dur);
+      osc.stop(t + i * dur + dur);
+    });
+  }
+  function ringSinoAula(){ ringTone([880, 660], 0.35); }
+  function ringSinoAtraso(){ ringTone([740, 500, 740, 500], 0.22); }
+
+  var soundToggleBtn = document.getElementById('soundToggleBtn');
+  function updateSoundBtn(){ soundToggleBtn.textContent = soundEnabled ? '🔊 Som do sino ativado' : '🔇 Som do sino desativado'; }
+  updateSoundBtn();
+  soundToggleBtn.addEventListener('click', function(){
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0');
+    updateSoundBtn();
+    if(soundEnabled) ringSinoAula();
+  });
+
   var lockBanner = document.getElementById('lockBanner');
   var manualLockToggle = document.getElementById('manualLockToggle');
   var MANUAL_LOCK_KEY = 'matrixedu_manual_lock_v1';
@@ -888,6 +1342,7 @@
     if(lastStatusKey !== null && key !== lastStatusKey && notifyEnabled && 'Notification' in window && Notification.permission === 'granted'){
       new Notification('MatrixEdu — Sino digital', {body: st.texto});
     }
+    if(lastStatusKey !== null && key !== lastStatusKey){ ringSinoAula(); }
     lastStatusKey = key;
 
     isLockedNow = manualLock || st.tipo === 'intervalo';
@@ -930,9 +1385,16 @@
 
     var agora = new Date();
     var hora = agora.getHours().toString().padStart(2,'0') + ':' + agora.getMinutes().toString().padStart(2,'0');
-    log.unshift({carrinho: c.nome, sala: 'Sala ' + sala, professor: fProf.value.trim() || '—', qtd: qtd, acao: acao, hora: hora});
+    var dataTxt = pad2(agora.getDate()) + '/' + pad2(agora.getMonth() + 1);
+    log.unshift({chave: cartKey, carrinho: c.nome, sala: 'Sala ' + sala, professor: fProf.value.trim() || '—', qtd: qtd, acao: acao, hora: hora, data: dataTxt});
     saveLog();
     renderLog();
+    if(currentCart === cartKey) renderCartDetail();
+    registrarAtividade(
+      acao === 'retirada' ? 'Retirada de carrinho' : 'Devolução de carrinho',
+      fProf.value.trim() || '—',
+      qtd + ' equipamento(s) · ' + c.nome + ' · Sala ' + sala
+    );
 
     showStamp(acao === 'retirada' ? 'Retirado ✓' : 'Devolvido ✓', acao === 'retirada');
     checkoutForm.reset();
@@ -943,15 +1405,44 @@
   });
 
   /* ---------- Login e área de administração (licenças) ---------- */
-  var USERS_KEY = 'matrixedu_users_v1';
+  var USERS_KEY = 'matrixedu_users_v2';
   var SESSION_KEY = 'matrixedu_session_v1';
   var users = null;
   try{ users = JSON.parse(localStorage.getItem(USERS_KEY)); }catch(e){ users = null; }
   if(!users){
-    users = { 'admin@matrixedu.com': {nome:'Administrador(a)', senha:'matrix2026', role:'admin', licenca:'liberada'} };
+    users = {
+      'mariahildaornelasdeoliveira@gmail.com': {nome:'Maria Hilda Ornelas de Oliveira', senha:'MATRIXEDU@2026', role:'admin', licenca:'liberada'}
+    };
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
   }
   function saveUsers(){ localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
+  /* Garante que a conta da administradora sempre exista como admin, mesmo se o navegador já tinha dados antigos salvos */
+  if(!users['mariahildaornelasdeoliveira@gmail.com'] || users['mariahildaornelasdeoliveira@gmail.com'].role !== 'admin'){
+    users['mariahildaornelasdeoliveira@gmail.com'] = {nome:'Maria Hilda Ornelas de Oliveira', senha:'MATRIXEDU@2026', role:'admin', licenca:'liberada'};
+    saveUsers();
+  }
+  if(users['admin@matrixedu.com']){ delete users['admin@matrixedu.com']; saveUsers(); }
+
+  /* ---------- Envio de e-mail de verificação (EmailJS) ---------- */
+  var EMAILJS_PUBLIC_KEY = 'PiZjoY4hknTuvbvUN';
+  var EMAILJS_SERVICE_ID = 'service_2faatx';
+  var EMAILJS_TEMPLATE_ID = 'Template_sn2d58d';
+  if(window.emailjs){ emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY }); }
+
+  function gerarCodigo(){
+    return String(Math.floor(100000 + Math.random() * 900000));
+  }
+
+  function enviarCodigoVerificacao(destinatario, nome, codigo){
+    if(!window.emailjs){
+      return Promise.reject(new Error('emailjs-nao-carregado'));
+    }
+    return emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: destinatario,
+      to_name: nome,
+      codigo: codigo
+    });
+  }
 
   var session = null;
   try{ session = JSON.parse(localStorage.getItem(SESSION_KEY)); }catch(e){ session = null; }
@@ -972,6 +1463,374 @@
     var u = users[session.user];
     if(u && u.role === 'professor' && u.licenca === 'liberada'){ fProf.value = u.nome; }
   }
+
+  /* ---------- Check-in/checkout de aula ---------- */
+  var ATTENDANCE_KEY = 'matrixedu_attendance_v1';
+  var attendance = [];
+  try{ attendance = JSON.parse(localStorage.getItem(ATTENDANCE_KEY)) || []; }catch(e){ attendance = []; }
+  function saveAttendance(){ localStorage.setItem(ATTENDANCE_KEY, JSON.stringify(attendance)); }
+
+  var GRACE_MIN = 5;
+  var atrasoBanner = document.getElementById('atrasoBanner');
+  var checkinLockedMsg = document.getElementById('checkinLockedMsg');
+  var checkinForm = document.getElementById('checkinForm');
+  var ciSala = document.getElementById('ciSala');
+  var ciPeriodoAtual = document.getElementById('ciPeriodoAtual');
+  var ciEntradaBtn = document.getElementById('ciEntradaBtn');
+  var ciSaidaBtn = document.getElementById('ciSaidaBtn');
+  var checkinMsg = document.getElementById('checkinMsg');
+  var lastAtrasoAlertKey = null;
+
+  function getCurrentPeriodInfo(d){
+    var diaIdx = d.getDay() - 1;
+    if(diaIdx < 0 || diaIdx > 4) return null;
+    var min = d.getHours() * 60 + d.getMinutes();
+    var sets = [
+      {shift:'manha', periodos:periodosManha, salas:salasManha},
+      {shift:'tarde', periodos:periodosTarde, salas:salasTarde}
+    ];
+    for(var s = 0; s < sets.length; s++){
+      var periodos = sets[s].periodos;
+      for(var i = 0; i < periodos.length; i++){
+        var p = periodos[i];
+        if(!p.intervalo && min >= p.ini && min < p.fim){
+          return {shift: sets[s].shift, periodo: p, index: i, salas: sets[s].salas, key: sets[s].shift + '_' + diaIdx + '_' + i};
+        }
+      }
+    }
+    return null;
+  }
+
+  function updateCheckinUI(){
+    var logged = session && users[session.user];
+    checkinLockedMsg.hidden = !!logged;
+    checkinForm.hidden = !logged;
+    if(!logged) return;
+    var now = new Date();
+    var info = getCurrentPeriodInfo(now);
+    if(info){
+      ciSala.innerHTML = '';
+      info.salas.forEach(function(s){ var o = document.createElement('option'); o.value = s; o.textContent = 'Sala ' + s; ciSala.appendChild(o); });
+      ciPeriodoAtual.textContent = info.periodo.t + ' · ' + diasSemana[now.getDay() - 1];
+      ciEntradaBtn.disabled = false;
+      ciSaidaBtn.disabled = false;
+    } else {
+      ciPeriodoAtual.textContent = 'Nenhuma aula em andamento agora.';
+      ciEntradaBtn.disabled = true;
+      ciSaidaBtn.disabled = true;
+    }
+  }
+
+  function registrarPresenca(tipo){
+    checkinMsg.style.color = 'var(--red-pen)';
+    checkinMsg.textContent = '';
+    if(!session || !users[session.user]){ checkinMsg.textContent = 'Faça login para registrar.'; return; }
+    var now = new Date();
+    var info = getCurrentPeriodInfo(now);
+    if(!info){ checkinMsg.textContent = 'Não há aula em andamento agora.'; return; }
+    var min = now.getHours() * 60 + now.getMinutes();
+    var status = 'no-horario';
+    if(tipo === 'entrada' && (min - info.periodo.ini) > GRACE_MIN) status = 'atrasado';
+    if(tipo === 'saida' && (info.periodo.fim - min) > GRACE_MIN) status = 'antecipado';
+    var todayKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+    var u = users[session.user];
+    var rec = {
+      dataKey: todayKey,
+      data: pad2(now.getDate()) + '/' + pad2(now.getMonth() + 1),
+      sala: ciSala.value,
+      professorKey: session.user,
+      professor: u.nome,
+      periodo: info.periodo.t,
+      periodoKey: info.key,
+      tipo: tipo,
+      hora: pad2(now.getHours()) + ':' + pad2(now.getMinutes()),
+      status: status
+    };
+    attendance.unshift(rec);
+    saveAttendance();
+    registrarAtividade(
+      tipo === 'entrada' ? 'Entrada em aula' : 'Saída de aula',
+      u.nome,
+      'Sala ' + rec.sala + ' · ' + info.periodo.t + (status !== 'no-horario' ? ' (' + (status === 'atrasado' ? 'atrasado' : 'antecipado') + ')' : '')
+    );
+    checkinMsg.style.color = 'var(--green-check)';
+    var statusTxt = status === 'atrasado' ? ' (atrasado)' : (status === 'antecipado' ? ' (saída antecipada)' : ' — no horário');
+    checkinMsg.textContent = (tipo === 'entrada' ? 'Entrada' : 'Saída') + ' registrada às ' + rec.hora + statusTxt + '.';
+    showStamp(tipo === 'entrada' ? 'Entrada ✓' : 'Saída ✓', tipo !== 'entrada');
+    if(tipo === 'entrada') atrasoBanner.hidden = true;
+    if(!adminSection.hidden){ renderAttendanceTable(); renderTeacherAttendance(); }
+  }
+  ciEntradaBtn.addEventListener('click', function(){ registrarPresenca('entrada'); });
+  ciSaidaBtn.addEventListener('click', function(){ registrarPresenca('saida'); });
+
+  function renderAttendanceTable(){
+    var tbody = document.getElementById('attendanceTableBody');
+    if(!tbody) return;
+    var rows = '';
+    attendance.slice(0, 100).forEach(function(a){
+      var label = a.status === 'atrasado' ? 'Atrasado' : (a.status === 'antecipado' ? 'Antecipado' : 'No horário');
+      rows += '<tr><td>' + a.data + '</td><td>Sala ' + a.sala + '</td><td>' + a.professor + '</td><td>' + a.periodo + '</td><td>' +
+        (a.tipo === 'entrada' ? 'Entrada' : 'Saída') + '</td><td>' + a.hora + '</td><td><span class="status-pill ' + a.status + '">' + label + '</span></td></tr>';
+    });
+    tbody.innerHTML = rows || '<tr><td colspan="7" style="color:var(--ink-soft);">Nenhum registro de entrada/saída ainda.</td></tr>';
+  }
+
+  /* ---------- Frequência de professores (quem foi à escola e quem faltou no dia) ---------- */
+  var attDateFilter = document.getElementById('attDateFilter');
+  (function(){
+    var hoje = new Date();
+    attDateFilter.value = hoje.getFullYear() + '-' + pad2(hoje.getMonth() + 1) + '-' + pad2(hoje.getDate());
+  })();
+
+  function dateInputToKey(value){
+    var partes = value.split('-');
+    return parseInt(partes[0], 10) + '-' + parseInt(partes[1], 10) + '-' + parseInt(partes[2], 10);
+  }
+
+  function normName(s){ return (s || '').trim().toLowerCase(); }
+
+  function teacherAttendanceData(){
+    var dateVal = attDateFilter.value;
+    var key = dateVal ? dateInputToKey(dateVal) : null;
+    var presentesKeys = {};
+    attendance.forEach(function(a){
+      if(a.tipo === 'entrada' && a.dataKey === key) presentesKeys[a.professorKey] = true;
+    });
+    var substHoje = substituicoes.filter(function(s){ return s.dataKey === key; });
+    var professores = Object.keys(users).filter(function(k){ return users[k].role === 'professor'; });
+    return {
+      presentes: professores.filter(function(k){ return presentesKeys[k]; }).map(function(k){ return users[k].nome; }),
+      faltantes: professores.filter(function(k){ return !presentesKeys[k]; }).map(function(k){
+        var nome = users[k].nome;
+        return {nome: nome, subs: substHoje.filter(function(s){ return normName(s.professorFaltou) === normName(nome); })};
+      })
+    };
+  }
+
+  function renderTeacherAttendance(){
+    var dados = teacherAttendanceData();
+    var presentList = document.getElementById('teacherPresentList');
+    var absentList = document.getElementById('teacherAbsentList');
+    document.getElementById('teacherPresentCount').textContent = dados.presentes.length;
+    document.getElementById('teacherAbsentCount').textContent = dados.faltantes.length;
+    presentList.innerHTML = dados.presentes.length
+      ? dados.presentes.map(function(nome){ return '<li>' + escapeHtml(nome) + '</li>'; }).join('')
+      : '<li class="log-empty">Nenhum professor registrou entrada nesse dia.</li>';
+    absentList.innerHTML = dados.faltantes.length
+      ? dados.faltantes.map(function(p){
+          var substTxt = p.subs.length
+            ? '<br><span class="subst-note">Substituído(a) por ' + p.subs.map(function(s){ return escapeHtml(s.professorNovo) + ' (' + escapeHtml(s.materia) + ', Sala ' + escapeHtml(s.sala) + ')'; }).join('; ') + '</span>'
+            : '';
+          return '<li>' + escapeHtml(p.nome) + substTxt + '</li>';
+        }).join('')
+      : '<li class="log-empty">Nenhum professor cadastrado — ou todos compareceram.</li>';
+  }
+  attDateFilter.addEventListener('change', function(){ renderTeacherAttendance(); renderSubstList(); });
+
+  document.getElementById('pdfBtnFrequencia').addEventListener('click', function(){
+    var dados = teacherAttendanceData();
+    var dataLabel = attDateFilter.value || '—';
+    var html = '<h3>Foram à escola (' + dados.presentes.length + ')</h3><ul>' +
+      (dados.presentes.length ? dados.presentes.map(function(n){ return '<li>' + escapeHtml(n) + '</li>'; }).join('') : '<li>Ninguém registrou entrada.</li>') +
+      '</ul><h3>Faltaram (' + dados.faltantes.length + ')</h3><ul>' +
+      (dados.faltantes.length ? dados.faltantes.map(function(p){
+        var substTxt = p.subs.length ? ' — substituído(a) por ' + p.subs.map(function(s){ return escapeHtml(s.professorNovo) + ' (' + escapeHtml(s.materia) + ')'; }).join('; ') : '';
+        return '<li>' + escapeHtml(p.nome) + substTxt + '</li>';
+      }).join('') : '<li>Todos compareceram.</li>') +
+      '</ul>';
+    printReport('Frequência de professores · ' + dataLabel, html);
+  });
+
+  /* ---------- Registrar falta e substituição de aula ---------- */
+  var SUBST_KEY = 'matrixedu_substituicoes_v1';
+  var substituicoes = [];
+  try{ substituicoes = JSON.parse(localStorage.getItem(SUBST_KEY)) || []; }catch(e){ substituicoes = []; }
+  function saveSubst(){ localStorage.setItem(SUBST_KEY, JSON.stringify(substituicoes)); }
+
+  var subData = document.getElementById('subData');
+  var subTurno = document.getElementById('subTurno');
+  var subDia = document.getElementById('subDia');
+  var subSala = document.getElementById('subSala');
+  var subPeriodo = document.getElementById('subPeriodo');
+  var subMateria = document.getElementById('subMateria');
+  var subProfessorFaltou = document.getElementById('subProfessorFaltou');
+  var subProfessorNovo = document.getElementById('subProfessorNovo');
+  var substForm = document.getElementById('substForm');
+  var subFormMsg = document.getElementById('subFormMsg');
+  var lastAutoMateria = '';
+
+  (function(){
+    var hoje = new Date();
+    subData.value = hoje.getFullYear() + '-' + pad2(hoje.getMonth() + 1) + '-' + pad2(hoje.getDate());
+  })();
+
+  function populateSubDia(){
+    subDia.innerHTML = '';
+    diasSemana.forEach(function(d, i){ var o = document.createElement('option'); o.value = i; o.textContent = d; subDia.appendChild(o); });
+  }
+  function populateSubSala(turno){
+    var salas = turno === 'manha' ? salasManha : salasTarde;
+    var atual = subSala.value;
+    subSala.innerHTML = '';
+    salas.forEach(function(s){ var o = document.createElement('option'); o.value = s; o.textContent = 'Sala ' + s; subSala.appendChild(o); });
+    if(salas.indexOf(atual) !== -1) subSala.value = atual;
+  }
+  function populateSubPeriodo(turno){
+    var periodos = turno === 'manha' ? periodosManha : periodosTarde;
+    subPeriodo.innerHTML = '';
+    periodos.forEach(function(p, i){
+      if(p.intervalo) return;
+      var o = document.createElement('option'); o.value = i; o.textContent = p.t; subPeriodo.appendChild(o);
+    });
+  }
+  function populateProfessoresDatalist(){
+    var dl = document.getElementById('professoresDatalist');
+    dl.innerHTML = '';
+    Object.keys(users).filter(function(k){ return users[k].role === 'professor'; }).forEach(function(k){
+      var o = document.createElement('option'); o.value = users[k].nome; dl.appendChild(o);
+    });
+  }
+  function autofillMateria(){
+    if(!subTurno.value || subDia.value === '' || !subSala.value || subPeriodo.value === '') return;
+    var key = subTurno.value + '_' + subDia.value + '_' + subPeriodo.value + '_' + subSala.value;
+    var valor = gradeData[key] || '';
+    if(subMateria.value === '' || subMateria.value === lastAutoMateria){
+      subMateria.value = valor;
+      lastAutoMateria = valor;
+    }
+  }
+  populateSubDia();
+  populateSubSala('manha');
+  populateSubPeriodo('manha');
+  populateProfessoresDatalist();
+
+  subTurno.addEventListener('change', function(){
+    populateSubSala(subTurno.value);
+    populateSubPeriodo(subTurno.value);
+    autofillMateria();
+  });
+  [subDia, subSala, subPeriodo].forEach(function(el){ el.addEventListener('change', autofillMateria); });
+
+  function substForSelectedDate(){
+    if(!subData.value) return [];
+    var key = dateInputToKey(subData.value);
+    return substituicoes.filter(function(s){ return s.dataKey === key; });
+  }
+
+  function renderSubstList(){
+    var lista = substForSelectedDate();
+    document.getElementById('substCount').textContent = lista.length;
+    var listEl = document.getElementById('substList');
+    if(!lista.length){
+      listEl.innerHTML = '<li class="log-empty">Nenhuma substituição registrada nessa data.</li>';
+      return;
+    }
+    var html = '';
+    lista.forEach(function(s){
+      var realIdx = substituicoes.indexOf(s);
+      html += '<li><span><span class="who">' + escapeHtml(s.professorFaltou) + '</span> → ' + escapeHtml(s.professorNovo) +
+        ' · ' + escapeHtml(s.materia) + ' · Sala ' + escapeHtml(s.sala) + ' · ' + escapeHtml(s.turnoLabel) + ' ' + escapeHtml(s.diaLabel) + ' ' + escapeHtml(s.periodoLabel) + '</span>' +
+        '<button type="button" class="remove-subst" data-idx="' + realIdx + '" aria-label="Remover substituição">✕</button></li>';
+    });
+    listEl.innerHTML = html;
+    listEl.querySelectorAll('.remove-subst').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var i = parseInt(btn.dataset.idx, 10);
+        var removido = substituicoes.splice(i, 1)[0];
+        saveSubst();
+        renderSubstList();
+        renderTeacherAttendance();
+        if(removido){
+          registrarAtividade('Remoção de substituição', (session && users[session.user]) ? users[session.user].nome : 'Administrador(a)',
+            removido.professorFaltou + ' → ' + removido.professorNovo + ' (' + removido.materia + ')');
+        }
+      });
+    });
+  }
+  subData.addEventListener('change', renderSubstList);
+  renderSubstList();
+
+  substForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    subFormMsg.style.color = 'var(--red-pen)';
+    subFormMsg.textContent = '';
+    if(!subData.value){ subFormMsg.textContent = 'Selecione a data.'; return; }
+    var faltou = subProfessorFaltou.value.trim();
+    var novo = subProfessorNovo.value.trim();
+    var materia = subMateria.value.trim();
+    if(!faltou){ subFormMsg.textContent = 'Informe quem faltou.'; return; }
+    if(!novo){ subFormMsg.textContent = 'Informe o(a) substituto(a).'; return; }
+    if(!materia){ subFormMsg.textContent = 'Informe a matéria.'; return; }
+    var turno = subTurno.value;
+    var periodos = turno === 'manha' ? periodosManha : periodosTarde;
+    var periodoIdx = parseInt(subPeriodo.value, 10);
+    var rec = {
+      dataKey: dateInputToKey(subData.value),
+      data: subData.value.split('-').reverse().join('/'),
+      turno: turno,
+      turnoLabel: turno === 'manha' ? 'Manhã' : 'Tarde',
+      diaIdx: parseInt(subDia.value, 10),
+      diaLabel: diasSemana[parseInt(subDia.value, 10)],
+      sala: subSala.value,
+      periodoIdx: periodoIdx,
+      periodoLabel: periodos[periodoIdx] ? periodos[periodoIdx].t : '',
+      materia: materia,
+      professorFaltou: faltou,
+      professorNovo: novo
+    };
+    substituicoes.unshift(rec);
+    saveSubst();
+    registrarAtividade('Substituição de aula', (session && users[session.user]) ? users[session.user].nome : 'Administrador(a)',
+      faltou + ' faltou (Sala ' + rec.sala + ', ' + materia + ', ' + rec.periodoLabel + ') → substituído(a) por ' + novo);
+    renderSubstList();
+    renderTeacherAttendance();
+    subFormMsg.style.color = 'var(--green-check)';
+    subFormMsg.textContent = 'Substituição registrada com sucesso.';
+    subProfessorFaltou.value = '';
+    subProfessorNovo.value = '';
+    subMateria.value = '';
+    lastAutoMateria = '';
+  });
+
+  document.getElementById('pdfBtnSubst').addEventListener('click', function(){
+    var lista = substForSelectedDate();
+    var rowsHtml = '<table><thead><tr><th>Turno</th><th>Dia</th><th>Sala</th><th>Período</th><th>Matéria</th><th>Professor(a) que faltou</th><th>Substituto(a)</th></tr></thead><tbody>';
+    if(!lista.length){
+      rowsHtml += '<tr><td colspan="7">Nenhuma substituição registrada.</td></tr>';
+    } else {
+      lista.forEach(function(s){
+        rowsHtml += '<tr><td>' + escapeHtml(s.turnoLabel) + '</td><td>' + escapeHtml(s.diaLabel) + '</td><td>Sala ' + escapeHtml(s.sala) + '</td><td>' +
+          escapeHtml(s.periodoLabel) + '</td><td>' + escapeHtml(s.materia) + '</td><td>' + escapeHtml(s.professorFaltou) + '</td><td>' + escapeHtml(s.professorNovo) + '</td></tr>';
+      });
+    }
+    rowsHtml += '</tbody></table>';
+    printReport('Substituições de aula · ' + (subData.value ? subData.value.split('-').reverse().join('/') : '—'), rowsHtml);
+  });
+
+  function checkAtraso(){
+    if(!session || !users[session.user] || users[session.user].role !== 'professor'){ atrasoBanner.hidden = true; return; }
+    var now = new Date();
+    var info = getCurrentPeriodInfo(now);
+    if(!info){ atrasoBanner.hidden = true; return; }
+    var min = now.getHours() * 60 + now.getMinutes();
+    var elapsed = min - info.periodo.ini;
+    if(elapsed < GRACE_MIN){ atrasoBanner.hidden = true; return; }
+    var todayKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+    var jaEntrou = attendance.some(function(a){
+      return a.professorKey === session.user && a.tipo === 'entrada' && a.dataKey === todayKey && a.periodoKey === info.key;
+    });
+    if(jaEntrou){ atrasoBanner.hidden = true; return; }
+    atrasoBanner.hidden = false;
+    atrasoBanner.textContent = '🔔 Você ainda não registrou entrada na aula das ' + info.periodo.t + '. Registre logo abaixo.';
+    var alertKey = session.user + '_' + todayKey + '_' + info.key;
+    if(lastAtrasoAlertKey !== alertKey){
+      lastAtrasoAlertKey = alertKey;
+      ringSinoAtraso();
+    }
+  }
+  updateCheckinUI();
+  checkAtraso();
+  setInterval(function(){ updateCheckinUI(); checkAtraso(); }, 15000);
 
   function openLogin(){
     loginModal.hidden = false;
@@ -1005,16 +1864,69 @@
       var isAdmin = u.role === 'admin';
       navAdminLink.hidden = !isAdmin;
       adminSection.hidden = !isAdmin;
-      if(isAdmin) renderAdminTable();
+      if(isAdmin){ renderAdminTable(); renderAttendanceTable(); renderAccessLogTable(); renderActivityLogTable(); renderTeacherAttendance(); populateProfessoresDatalist(); }
       reapplyProfPrefill();
     } else {
       authBtn.textContent = 'Entrar';
       navAdminLink.hidden = true;
       adminSection.hidden = true;
     }
+    updateCheckinUI();
+    checkAtraso();
   }
   updateAuthUI();
   if(!session){ openLogin(); }
+
+  /* ---------- Log de tudo (log geral de atividades) ---------- */
+  var ACTIVITY_LOG_KEY = 'matrixedu_activity_log_v1';
+  var activityLog = [];
+  try{ activityLog = JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY)) || []; }catch(e){ activityLog = []; }
+  function saveActivityLog(){ localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(activityLog)); }
+
+  function registrarAtividade(tipo, usuario, detalhe){
+    var now = new Date();
+    var carimbo = pad2(now.getDate()) + '/' + pad2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+    activityLog.unshift({carimbo: carimbo, tipo: tipo, usuario: usuario || '—', detalhe: detalhe});
+    if(activityLog.length > 500) activityLog = activityLog.slice(0, 500);
+    saveActivityLog();
+    if(!adminSection.hidden) renderActivityLogTable();
+  }
+
+  function renderActivityLogTable(){
+    var tbody = document.getElementById('activityLogTableBody');
+    if(!tbody) return;
+    var rows = '';
+    activityLog.slice(0, 250).forEach(function(a){
+      rows += '<tr><td>' + a.carimbo + '</td><td><span class="status-pill">' + a.tipo + '</span></td><td>' + a.usuario + '</td><td>' + a.detalhe + '</td></tr>';
+    });
+    tbody.innerHTML = rows || '<tr><td colspan="4" style="color:var(--ink-soft);">Nenhuma atividade registrada ainda.</td></tr>';
+  }
+
+  /* ---------- Log de acessos (login) ---------- */
+  var ACCESS_LOG_KEY = 'matrixedu_access_log_v1';
+  var accessLog = [];
+  try{ accessLog = JSON.parse(localStorage.getItem(ACCESS_LOG_KEY)) || []; }catch(e){ accessLog = []; }
+  function saveAccessLog(){ localStorage.setItem(ACCESS_LOG_KEY, JSON.stringify(accessLog)); }
+
+  function registrarAcesso(email, nome, perfil, resultado, sucesso){
+    var now = new Date();
+    var carimbo = pad2(now.getDate()) + '/' + pad2(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+    accessLog.unshift({carimbo: carimbo, email: email, nome: nome, perfil: perfil, resultado: resultado, sucesso: !!sucesso});
+    if(accessLog.length > 300) accessLog = accessLog.slice(0, 300);
+    saveAccessLog();
+    if(!adminSection.hidden) renderAccessLogTable();
+    registrarAtividade('Acesso', email, resultado);
+  }
+
+  function renderAccessLogTable(){
+    var tbody = document.getElementById('accessLogTableBody');
+    if(!tbody) return;
+    var rows = '';
+    accessLog.slice(0, 150).forEach(function(a){
+      rows += '<tr><td>' + a.carimbo + '</td><td>' + a.email + '</td><td>' + (a.nome || '—') + '</td><td>' + (a.perfil || '—') + '</td><td><span class="status-pill ' + (a.sucesso ? 'liberada' : 'bloqueada') + '">' + a.resultado + '</span></td></tr>';
+    });
+    tbody.innerHTML = rows || '<tr><td colspan="5" style="color:var(--ink-soft);">Nenhum acesso registrado ainda.</td></tr>';
+  }
 
   loginForm.addEventListener('submit', function(e){
     e.preventDefault();
@@ -1022,19 +1934,44 @@
     var userKey = document.getElementById('loginUser').value.trim().toLowerCase();
     var pass = document.getElementById('loginPass').value;
     var u = users[userKey];
-    if(!u || u.senha !== pass){ loginMsg.textContent = 'E-mail ou senha incorretos.'; return; }
+    if(!u || u.senha !== pass){
+      loginMsg.textContent = 'E-mail ou senha incorretos.';
+      registrarAcesso(userKey, u ? u.nome : '—', u ? u.role : '—', 'Senha ou e-mail incorretos', false);
+      return;
+    }
     if(u.role === 'professor' && u.licenca !== 'liberada'){
+      var motivoBloqueio = u.licenca === 'pendente' ? 'Licença pendente' : 'Licença bloqueada';
       loginMsg.textContent = u.licenca === 'pendente'
         ? 'Sua licença ainda não foi liberada pelo administrador.'
         : 'Sua licença foi bloqueada. Fale com o administrador.';
+      registrarAcesso(userKey, u.nome, u.role, motivoBloqueio, false);
       return;
     }
     session = {user: userKey};
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    registrarAcesso(userKey, u.nome, u.role, 'Login bem-sucedido', true);
     loginForm.reset();
     closeLoginModal();
     updateAuthUI();
   });
+
+  var verifyForm = document.getElementById('verifyForm');
+  var verifyIntro = document.getElementById('verifyIntro');
+  var verifyMsg = document.getElementById('verifyMsg');
+  var verifyCode = document.getElementById('verifyCode');
+  var demoCodeBox = document.getElementById('demoCodeBox');
+  var verifyCancelBtn = document.getElementById('verifyCancelBtn');
+  var pendingSignup = null; // {nome, userKey, pass, codigo}
+
+  function voltarParaCadastro(){
+    pendingSignup = null;
+    verifyForm.hidden = true;
+    verifyForm.reset();
+    demoCodeBox.hidden = true;
+    verifyMsg.textContent = '';
+    signupForm.hidden = false;
+  }
+  verifyCancelBtn.addEventListener('click', voltarParaCadastro);
 
   signupForm.addEventListener('submit', function(e){
     e.preventDefault();
@@ -1047,11 +1984,56 @@
     if(!nome || !userKey || pass.length < 4){ signupMsg.textContent = 'Preencha todos os campos (senha com ao menos 4 caracteres).'; return; }
     if(!emailValido){ signupMsg.textContent = 'Digite um e-mail válido.'; return; }
     if(users[userKey]){ signupMsg.textContent = 'Esse e-mail já está cadastrado.'; return; }
-    users[userKey] = {nome: nome, senha: pass, role: 'professor', licenca: 'pendente'};
+
+    var codigo = gerarCodigo();
+    pendingSignup = {nome: nome, userKey: userKey, pass: pass, codigo: codigo};
+
+    signupMsg.style.color = 'var(--ink-soft)';
+    signupMsg.textContent = 'Enviando código de verificação…';
+
+    enviarCodigoVerificacao(userKey, nome, codigo).then(function(){
+      signupMsg.textContent = '';
+      demoCodeBox.hidden = true;
+      abrirVerificacao(userKey);
+    }).catch(function(){
+      // EmailJS ainda não está totalmente configurado (falta o Template ID) ou o envio falhou.
+      // Mostra o código na tela para não travar o cadastro enquanto isso é resolvido.
+      signupMsg.textContent = '';
+      demoCodeBox.hidden = false;
+      demoCodeBox.textContent = 'Não foi possível enviar o e-mail agora. Código de verificação (modo teste): ' + codigo;
+      abrirVerificacao(userKey);
+    });
+  });
+
+  function abrirVerificacao(userKey){
+    signupForm.hidden = true;
+    verifyForm.hidden = false;
+    verifyIntro.textContent = 'Enviamos um código de 6 dígitos para ' + userKey + '. Digite-o abaixo para confirmar seu e-mail.';
+    verifyMsg.textContent = '';
+    verifyCode.value = '';
+    verifyCode.focus();
+  }
+
+  verifyForm.addEventListener('submit', function(e){
+    e.preventDefault();
+    verifyMsg.style.color = 'var(--red-pen)';
+    if(!pendingSignup){ verifyMsg.textContent = 'Cadastro expirado, comece de novo.'; return; }
+    var digitado = verifyCode.value.trim();
+    if(digitado !== pendingSignup.codigo){
+      verifyMsg.textContent = 'Código incorreto. Confira o e-mail e tente novamente.';
+      return;
+    }
+    users[pendingSignup.userKey] = {nome: pendingSignup.nome, senha: pendingSignup.pass, role: 'professor', licenca: 'pendente'};
     saveUsers();
-    signupForm.reset();
+    registrarAtividade('Cadastro de conta', pendingSignup.userKey, 'Conta criada para ' + pendingSignup.nome + ' (aguardando liberação de licença)');
     signupMsg.style.color = 'var(--green-check)';
-    signupMsg.textContent = 'Conta criada! Aguarde a liberação da licença pelo administrador.';
+    signupMsg.textContent = 'E-mail verificado e conta criada! Aguarde a liberação da licença pelo administrador.';
+    pendingSignup = null;
+    verifyForm.hidden = true;
+    verifyForm.reset();
+    demoCodeBox.hidden = true;
+    signupForm.hidden = false;
+    signupForm.reset();
     if(!adminSection.hidden) renderAdminTable();
   });
 
@@ -1062,6 +2044,8 @@
       var tab = btn.dataset.tab;
       loginForm.hidden = tab !== 'entrar';
       signupForm.hidden = tab !== 'cadastro';
+      verifyForm.hidden = true;
+      pendingSignup = null;
       loginMsg.textContent = '';
       signupMsg.textContent = '';
     });
@@ -1082,8 +2066,11 @@
     tbody.querySelectorAll('button').forEach(function(btn){
       btn.addEventListener('click', function(){
         var key = btn.dataset.user;
-        users[key].licenca = btn.dataset.acao === 'liberar' ? 'liberada' : 'bloqueada';
+        var novaLicenca = btn.dataset.acao === 'liberar' ? 'liberada' : 'bloqueada';
+        users[key].licenca = novaLicenca;
         saveUsers();
+        var adminNome = (session && users[session.user]) ? users[session.user].nome : 'Administrador(a)';
+        registrarAtividade('Alteração de licença', adminNome, (novaLicenca === 'liberada' ? 'Liberou' : 'Bloqueou') + ' a licença de ' + users[key].nome + ' (' + key + ')');
         renderAdminTable();
         if(session && session.user === key) updateAuthUI();
       });
@@ -1211,6 +2198,56 @@
       setTimeout(function(){ el.classList.remove('hover-read-highlight'); }, 1000);
     }, 180);
   });
+})();
+
+/* ---------- Instalar como aplicativo (PWA) ---------- */
+(function(){
+  var installBtn = document.getElementById('installBtn');
+  var iosBanner = document.getElementById('iosInstallBanner');
+  var iosClose = document.getElementById('iosInstallClose');
+  var deferredPrompt = null;
+  var IOS_DISMISS_KEY = 'matrixedu_ios_install_dismissed';
+
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+  function isIOS(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  }
+
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    deferredPrompt = e;
+    if(!isStandalone()) installBtn.hidden = false;
+  });
+
+  installBtn.addEventListener('click', function(){
+    if(!deferredPrompt) return;
+    installBtn.hidden = true;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function(){ deferredPrompt = null; });
+  });
+
+  window.addEventListener('appinstalled', function(){
+    installBtn.hidden = true;
+    deferredPrompt = null;
+  });
+
+  /* iOS Safari não tem prompt automático — mostra instrução de "Adicionar à Tela de Início" */
+  if(isIOS() && !isStandalone() && !localStorage.getItem(IOS_DISMISS_KEY)){
+    iosBanner.hidden = false;
+  }
+  iosClose.addEventListener('click', function(){
+    iosBanner.hidden = true;
+    localStorage.setItem(IOS_DISMISS_KEY, '1');
+  });
+
+  /* Registra o service worker só quando o site está hospedado (não funciona abrindo o arquivo direto, tipo file://) */
+  if('serviceWorker' in navigator && location.protocol !== 'file:'){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){ /* hospedagem sem suporte a service worker — tudo bem, o site funciona normalmente */ });
+    });
+  }
 })();
 </script>
 
